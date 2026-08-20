@@ -1,29 +1,19 @@
-const API_URL = 'https://script.google.com/macros/s/AKfycbwz8usokih2aqf1st-lzX5IvvpfiT4PPEySgept7CNDIqOC-kcAvfASW-F3cZ9Y0Pc5OQ/exec';
+// GANTI DENGAN URL WEB APP GAS ANDA YANG BARU SETELAH DEPLOY!
+const API_URL = 'https://script.google.com/macros/s/AKfycbx_LLw83GVcei5nM_L4tdDFX7OECth4mq2ABlfndCSvNloBQ422uPrprjvxCnqTF9e4Kw/exec';
 let appData = null;
 let dataSettingLokal = [];
-
-
+const PIN_SISTEM = "112233"; 
 
 // ==========================================
 // SINKRONISASI TOMBOL KEMBALI & ROUTING CERDAS
 // ==========================================
 window.addEventListener('popstate', (e) => {
-  if (document.body.classList.contains('swal2-shown')) { 
-    Swal.close(); 
-    return; 
-  }
-  
-  // LOGIKA BARU: Membaca langsung dari URL (hash) agar tidak pernah tersesat ke Beranda
+  if (document.body.classList.contains('swal2-shown')) { Swal.close(); return; }
   const hash = location.hash;
-  if (hash === '#santri') {
-    renderPembayaran(filterTingkat, true);
-  } else if (hash === '#laporan') {
-    renderLaporan(null, true);
-  } else if (hash === '#pengaturan') {
-    renderSetting(true);
-  } else {
-    renderDashboard(true);
-  }
+  if (hash === '#santri') renderPembayaran(filterTingkat, true);
+  else if (hash === '#laporan') renderLaporan(null, true);
+  else if (hash === '#pengaturan') renderSetting(true);
+  else renderDashboard(true);
 });
 
 const nativeSwalFire = Swal.fire;
@@ -35,28 +25,27 @@ Swal.fire = function(...args) {
   });
 };
 
-const PIN_SISTEM = "112233"; 
+// ==========================================
+// INISIALISASI & LOGIN
+// ==========================================
 // Mengeksekusi pengecekan secara instan (menghilangkan kedipan)
 if (localStorage.getItem('sudahLogin') === 'true') {
-  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('login-screen')?.classList.add('hidden');
   tampilkanAplikasiUtama();
 } else {
-  document.getElementById('login-screen').classList.remove('hidden');
+  document.getElementById('login-screen')?.classList.remove('hidden');
 }
 
 function prosesLogin() {
   if (document.getElementById('inputPassword').value === PIN_SISTEM) {
-    localStorage.setItem('sudahLogin', 'true'); tampilkanAplikasiUtama();
+    localStorage.setItem('sudahLogin', 'true'); 
+    tampilkanAplikasiUtama();
   } else {
     Swal.fire({ icon: 'error', title: 'Akses Ditolak', text: 'PIN salah!', confirmButtonColor: '#0f766e' });
     document.getElementById('inputPassword').value = ''; 
   }
 }
 
-
-// ==========================================
-// FUNGSI LOGOUT (KELUAR APLIKASI)
-// ==========================================
 function prosesLogout() {
   Swal.fire({
     title: 'Keluar dari Sistem?',
@@ -67,50 +56,34 @@ function prosesLogout() {
     cancelButtonColor: '#94a3b8',
     confirmButtonText: '<i class="fas fa-sign-out-alt mr-1"></i> Ya, Keluar',
     cancelButtonText: 'Batal',
-    customClass: {
-      popup: 'rounded-[32px]'
-    }
+    customClass: { popup: 'rounded-[32px]' }
   }).then((result) => {
     if (result.isConfirmed) {
-      // Menghapus data sesi login di memori browser
       localStorage.removeItem('sudahLogin'); 
-      
-      // Memuat ulang halaman agar kembali ke layar PIN
       location.reload(); 
     }
   });
 }
 
 async function tampilkanAplikasiUtama() {
-  document.getElementById('login-screen').classList.add('hidden');
-  document.getElementById('main-app').classList.remove('hidden');
-
+  document.getElementById('login-screen')?.classList.add('hidden');
+  document.getElementById('main-app')?.classList.remove('hidden');
   try {
     const response = await fetch(API_URL);
     appData = await response.json();
     dataSettingLokal = JSON.parse(JSON.stringify(appData.setting));
-
-    // LOGIKA BARU: Cek posisi URL terakhir agar tidak selalu kembali ke Beranda
-    const hash = location.hash;
-    if (hash === '#santri') {
-      renderPembayaran(filterTingkat, true);
-    } else if (hash === '#laporan') {
-      renderLaporan(null, true);
-    } else if (hash === '#pengaturan') {
-      renderSetting(true);
-    } else {
-      renderDashboard(true);
-    }
     
-  } catch (error) { 
-    Swal.fire('Error', 'Gagal memuat data dari server.', 'error'); 
-  }
+    const hash = location.hash;
+    if (hash === '#santri') renderPembayaran(filterTingkat, true);
+    else if (hash === '#laporan') renderLaporan(null, true);
+    else if (hash === '#pengaturan') renderSetting(true);
+    else renderDashboard(true);
+  } catch (error) { Swal.fire('Error', 'Gagal memuat data dari server.', 'error'); }
 }
 
 async function muatUlangDataTanpaReload() { 
   const response = await fetch(API_URL); 
   appData = await response.json(); 
-  // Sinkronisasi ulang jika terjadi perubahan di database
   dataSettingLokal = JSON.parse(JSON.stringify(appData.setting));
   const hash = location.hash; 
   if (hash === '#santri') renderPembayaran(filterTingkat, true); 
@@ -123,17 +96,19 @@ function formatRupiah(input) {
   let angka = input.value.replace(/[^0-9]/g, '');
   input.value = angka.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 }
-function updateNav(index) { document.querySelectorAll('.nav-btn').forEach((btn, i) => btn.className = i === index ? 'nav-btn text-emerald-600 flex flex-col items-center gap-1' : 'nav-btn text-gray-400 flex flex-col items-center gap-1 hover:text-emerald-500 transition-colors'); }
-async function muatUlangDataTanpaReload() { 
-  const response = await fetch(API_URL); appData = await response.json(); 
-  const hash = location.hash; 
-  if (hash === '#santri') renderPembayaran(filterTingkat, true); 
-  else if (hash === '#laporan') renderLaporan(null, true); 
-  else renderDashboard(true); 
+
+function updateNav(index) { 
+  document.querySelectorAll('.nav-btn').forEach((btn, i) => {
+    if (i === index) {
+      btn.className = 'nav-btn text-emerald-600 flex flex-col items-center gap-1 transform scale-110 transition-all font-bold';
+    } else {
+      btn.className = 'nav-btn text-gray-400 flex flex-col items-center gap-1 hover:text-emerald-500 transition-colors opacity-60 hover:opacity-100 font-normal';
+    }
+  }); 
 }
 
 // ==========================================
-// DASHBOARD DINAMIS
+// DASHBOARD
 // ==========================================
 function renderDashboard(isBack = false) {
   if (!isBack) history.pushState({ page: 'dashboard' }, "", "#beranda");
@@ -170,35 +145,26 @@ function renderDashboard(isBack = false) {
 }
 
 // ==========================================
-// HALAMAN SANTRI & PEMBAYARAN DINAMIS
-// ==========================================
-// ==========================================
-// HALAMAN SANTRI & PEMBAYARAN DINAMIS
+// MENU SANTRI & PEMBAYARAN
 // ==========================================
 let filterTingkat = 'Semua';
-
 function renderPembayaran(filterManual = null, isBack = false) {
   if (!isBack) history.pushState({ page: 'pembayaran' }, "", "#santri");
-  updateNav(1); 
-  if (!appData) return;
+  updateNav(1); if (!appData) return;
   if (filterManual) filterTingkat = filterManual; 
   
-  // 1. Ambil daftar kelas unik otomatis dari database (filter agar tidak ada yang kosong)
   const uniqueClasses = [...new Set(appData.santri.map(s => s.kelas).filter(k => k))].sort();
-  
-  // 2. Filter data dengan pencocokan nama kelas yang persis (exact match)
   let dataSantri = filterTingkat === 'Semua' ? appData.santri : appData.santri.filter(s => s.kelas === filterTingkat);
 
   const listHTML = dataSantri.map((s, index) => {
-    return `<div class="santri-card bg-white p-4 rounded-3xl shadow-sm border border-gray-100 mb-3 flex justify-between items-center hover:bg-gray-50 transition cursor-pointer" onclick="bukaFormPembayaran('${s.nama.replace(/'/g, "\\'")}', '${s.kelas.replace(/'/g, "\\'")}')">
+    return `<div class="santri-card bg-white p-4 rounded-3xl shadow-sm border border-gray-100 mb-3 flex justify-between items-center hover:bg-gray-50 transition cursor-pointer" onclick="bukaFormPembayaran('${s.nis}', '${s.nama.replace(/'/g, "\\'")}', '${s.kelas.replace(/'/g, "\\'")}')">
       <div class="flex items-center gap-3"><div class="w-10 h-10 min-w-[40px] bg-teal-50 rounded-full flex items-center justify-center text-teal-600 font-bold text-sm border border-teal-100">${index + 1}</div>
        <div class="flex-1 pr-2"><h4 class="font-bold text-sm break-words leading-tight">${s.nama}</h4><p class="text-xs text-gray-500">${s.nis} • ${s.kelas}</p></div>
       </div>
-      <button onclick="lihatRiwayat('${s.nama.replace(/'/g, "\\'")}', '${s.kelas.replace(/'/g, "\\'")}', event)" class="text-[10px] bg-blue-50 text-blue-600 px-3 py-1.5 rounded-full font-bold border border-blue-100 hover:bg-blue-500 hover:text-white transition-colors shadow-sm flex items-center gap-1 z-10"><i class="fas fa-history"></i> Riwayat</button>
+      <button onclick="lihatRiwayat('${s.nis}', '${s.nama.replace(/'/g, "\\'")}', '${s.kelas.replace(/'/g, "\\'")}', event)" class="text-[10px] bg-blue-50 text-blue-600 px-3 py-1.5 rounded-full font-bold border border-blue-100 hover:bg-blue-500 hover:text-white transition-colors shadow-sm flex items-center gap-1 z-10"><i class="fas fa-history"></i> Riwayat</button>
     </div>`
   }).join('');
 
-  // 3. Render HTML dropdown hanya berdasarkan uniqueClasses dari database
   document.getElementById('app-content').innerHTML = `
    <div class="max-w-2xl mx-auto pb-20 pt-4 px-7">
       <div class="relative mb-4">
@@ -216,16 +182,15 @@ function renderPembayaran(filterManual = null, isBack = false) {
       <div class="pb-10" id="listSantri">${listHTML}</div>
     </div>`;
 }
-
-
 function filterSantri() { const k = document.getElementById('inputPencarian').value.toLowerCase(); document.querySelectorAll('.santri-card').forEach(c => c.style.display = c.innerText.toLowerCase().includes(k) ? "flex" : "none"); }
 
-function bukaFormPembayaran(nama = '', kelas = '') {
+function bukaFormPembayaran(nis = '', nama = '', kelas = '') {
   let optTagihan = appData.setting.map(s => `<option value="${s.jenis}" style="color: #1f2937;">${s.jenis}</option>`).join('');
   Swal.fire({
     width: '400px', title: `<div class="w-16 h-16 bg-teal-50 text-teal-600 rounded-full flex items-center justify-center mx-auto mb-3 text-3xl border border-teal-100 shadow-sm mt-2"><i class="fas fa-wallet"></i></div><h3 class="text-xl font-extrabold text-gray-800">Input Pembayaran</h3>`,
     html: `
       <div class="text-left mt-2 px-1">
+        <input type="hidden" id="swal-nis" value="${nis}">
         <label class="block text-[11px] font-bold mb-1.5 text-gray-500 uppercase tracking-wider">Nama Santri</label>
         <div class="relative mb-4"><div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-teal-500"><i class="fas fa-user-graduate"></i></div><input id="swal-nama" class="w-full border border-gray-200 rounded-xl p-3 pl-10 bg-gray-50 text-gray-700 text-sm font-semibold outline-none" value="${nama}" readonly></div>
         <input type="hidden" id="swal-kelas" value="${kelas}">
@@ -240,7 +205,25 @@ function bukaFormPembayaran(nama = '', kelas = '') {
 }
 
 async function simpanData() {
-  const payload = { action: 'simpan_pembayaran', data: { nama: document.getElementById('swal-nama').value, kelas: document.getElementById('swal-kelas').value, jenis: document.getElementById('swal-jenis').value, nominal: Number(document.getElementById('swal-nominal').value.replace(/\./g, '')) } };
+  let nisKirim = "";
+  let namaKirim = document.getElementById('swal-nama').value;
+  
+  if (document.getElementById('swal-nis')) {
+      nisKirim = document.getElementById('swal-nis').value;
+  } else {
+      let val = namaKirim;
+      if(val.includes('|')) {
+         let split = val.split('|');
+         nisKirim = split[0];
+         namaKirim = split[1];
+      }
+  }
+
+  const payload = { 
+    action: 'simpan_pembayaran', 
+    data: { nis: nisKirim, nama: namaKirim, kelas: document.getElementById('swal-kelas').value, jenis: document.getElementById('swal-jenis').value, nominal: Number(document.getElementById('swal-nominal').value.replace(/\./g, '')) } 
+  };
+  
   Swal.fire({ title: 'Menyimpan...', allowOutsideClick: false, didOpen: () => { Swal.showLoading() } });
   try {
     const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify(payload) }); const result = await res.json();
@@ -249,16 +232,21 @@ async function simpanData() {
   } catch (e) { Swal.fire('Error', 'Data gagal terkirim.', 'error'); }
 }
 
-function lihatRiwayat(namaSantri, kelasSantri, event) {
+function lihatRiwayat(nisSantri, namaSantri, kelasSantri, event) {
   if (event) event.stopPropagation(); if (!appData) return;
   const k = kelasSantri.toUpperCase();
-  const riwayatSantri = appData.pembayaran.filter(p => p.nama === namaSantri && p.kelas === kelasSantri);
+  const riwayatSantri = appData.pembayaran.filter(p => p.nis === nisSantri || (p.nama === namaSantri && p.kelas === kelasSantri));
 
   let infoSisaPanel = appData.setting.map(set => {
     let target = k.includes('TK') ? set.TK : (k.includes('IBT') ? set.IBT : (k.includes('SANA') ? set.SANA : 0));
     let total = riwayatSantri.filter(r => r.jenis === set.jenis).reduce((sum, r) => sum + r.nominal, 0);
     let sisa = target - total;
-    return `<div class="bg-emerald-50 p-3 rounded-xl mb-2 border border-emerald-100 flex justify-between items-center shadow-sm"><div class="text-left"><p class="text-[9px] font-bold text-gray-500 uppercase tracking-wider">${set.jenis}</p></div><div class="text-right font-bold text-sm ${sisa <= 0 && target > 0 ? 'text-emerald-600' : 'text-red-500'}">${sisa <= 0 && target > 0 ? '<i class="fas fa-check-circle"></i> LUNAS' : 'Sisa Rp ' + Math.max(0, sisa).toLocaleString('id-ID')}</div></div>`;
+    
+    let isSelesai = (target > 0 && sisa <= 0) || (target === 0 && total > 0);
+    let textStatus = isSelesai ? '<i class="fas fa-check-circle mr-1"></i> SELESAI' : 'Sisa Rp ' + Math.max(0, sisa).toLocaleString('id-ID');
+    let colorStatus = isSelesai ? 'text-blue-600 bg-blue-50 px-2 py-1 rounded-lg border border-blue-100' : 'text-red-500';
+
+    return `<div class="bg-white p-3.5 rounded-xl mb-2 border border-gray-100 flex justify-between items-center shadow-sm"><div class="text-left"><p class="text-[9px] font-bold text-gray-500 uppercase tracking-wider">${set.jenis}</p></div><div class="text-right font-bold text-sm ${colorStatus}">${textStatus}</div></div>`;
   }).join('');
 
   let listRiwayat = riwayatSantri.length === 0 ? `<div class="text-center py-4"><p class="text-xs text-gray-400">Belum ada cicilan.</p></div>` : riwayatSantri.map(r => `<div class="flex justify-between items-center border-b border-gray-100 py-3 last:border-0"><div class="text-left"><p class="text-xs font-bold text-gray-800 uppercase">${r.jenis}</p><p class="text-[10px] text-gray-400 mt-0.5"><i class="far fa-calendar-alt"></i> ${new Date(r.tanggal).toLocaleDateString('id-ID')}</p></div><div class="text-right font-bold text-emerald-600 text-sm flex items-center gap-3"><span>+ Rp ${r.nominal.toLocaleString('id-ID')}</span><button onclick="hapusRiwayat('${r.jenis}', ${r.row})" class="text-red-400 hover:text-red-600 hover:bg-red-50 p-1 rounded-md"><i class="fas fa-trash-alt"></i></button></div></div>`).join('');
@@ -271,32 +259,87 @@ function hapusRiwayat(jenis, row) {
     if (r.isConfirmed) { 
       Swal.fire({title:'Menghapus...', didOpen:()=>Swal.showLoading()}); 
       await fetch(API_URL, {method:'POST', body:JSON.stringify({action:'hapus_pembayaran', data:{jenis: jenis, index: row}})}); 
-      await muatUlangDataTanpaReload(); // Sinkronisasi halus
+      await muatUlangDataTanpaReload();
       Swal.close(); 
     } 
   }); 
 }
 
+// ==========================================
+// TRANSAKSI CEPAT
+// ==========================================
+function bukaTransaksiCepat() { Swal.fire({ title: 'Pilih Transaksi', html: `<div class="grid grid-cols-2 gap-3 mt-4"><div onclick="bukaInputPemasukan()" class="bg-teal-50 border border-teal-200 p-4 rounded-2xl cursor-pointer hover:bg-teal-100 flex flex-col items-center gap-2"><div class="w-12 h-12 bg-teal-600 text-white rounded-full flex items-center justify-center text-xl shadow-md"><i class="fas fa-hand-holding-usd"></i></div><p class="text-xs font-bold text-teal-800 text-center mt-1">Terima<br>Pembayaran</p></div><div onclick="bukaInputPengeluaran()" class="bg-red-50 border border-red-200 p-4 rounded-2xl cursor-pointer hover:bg-red-100 flex flex-col items-center gap-2"><div class="w-12 h-12 bg-red-500 text-white rounded-full flex items-center justify-center text-xl shadow-md"><i class="fas fa-file-invoice-dollar"></i></div><p class="text-xs font-bold text-red-800 text-center mt-1">Catat<br>Pengeluaran</p></div></div>`, showConfirmButton: false, showCloseButton: true, position: 'bottom', customClass: { popup: 'rounded-t-3xl' } }); }
+
+function bukaInputPemasukan() {
+  Swal.close(); setTimeout(() => { if (!appData) return;
+    const uniqueClasses = [...new Set(appData.santri.map(s => s.kelas).filter(k => k))].sort();
+    let optK = '<option value="" disabled selected>-- Pilih Kelas --</option>' + uniqueClasses.map(c => `<option value="${c}">${c}</option>`).join('');
+    let optT = appData.setting.map(s => `<option value="${s.jenis}">${s.jenis}</option>`).join('');
+    Swal.fire({ width: '400px', title: `<h3 class="text-xl font-extrabold text-gray-800">Terima Pembayaran</h3>`, html: `<div class="text-left mt-2"><div class="mb-4"><label class="block text-[11px] font-bold mb-1 text-gray-500 uppercase">Kelas</label><select id="swal-kelas" onchange="updateDropdownSantri(this.value)" class="w-full border p-3 rounded-xl">${optK}</select></div><div class="mb-4"><label class="block text-[11px] font-bold mb-1 text-gray-500 uppercase">Santri</label><select id="swal-nama" class="w-full border p-3 rounded-xl bg-gray-100" disabled><option value="">Pilih kelas dulu...</option></select></div><div class="mb-4"><label class="block text-[11px] font-bold mb-1 text-gray-500 uppercase">Jenis Tagihan</label><select id="swal-jenis" class="w-full border p-3 rounded-xl">${optT}</select></div><div class="mb-2"><label class="block text-[11px] font-bold mb-1 text-gray-500 uppercase">Nominal</label><input id="swal-nominal" type="text" class="w-full border p-3 rounded-xl" oninput="formatRupiah(this)"></div></div>`, showCancelButton: true, confirmButtonText: 'Simpan', customClass: { popup: 'rounded-[32px]', confirmButton: 'bg-teal-600 text-white font-bold py-3 px-4 rounded-xl w-full' }, preConfirm: () => { if (!document.getElementById('swal-kelas').value || !document.getElementById('swal-nama').value || !document.getElementById('swal-nominal').value) { Swal.showValidationMessage('Lengkapi data!'); return false; } } }).then((r) => { if (r.isConfirmed) simpanData(); });
+  }, 300);
+}
+
+function updateDropdownSantri(k) { 
+  const sel = document.getElementById('swal-nama'); 
+  sel.innerHTML = '<option value="" disabled selected>-- Pilih Nama --</option>' + appData.santri.filter(s => s.kelas === k).sort((a,b)=>a.nama.localeCompare(b.nama)).map(s => `<option value="${s.nis}|${s.nama}">${s.nama}</option>`).join(''); 
+  sel.disabled = false; sel.classList.remove('bg-gray-100'); 
+}
+
+function bukaInputPengeluaran() {
+  Swal.close(); setTimeout(() => {
+    let optT = appData.setting.map(s => `<option value="${s.jenis}">${s.jenis}</option>`).join('');
+    Swal.fire({ width: '400px', title: `<h3 class="text-xl font-extrabold text-gray-800">Catat Pengeluaran</h3>`, html: `<div class="text-left mt-2"><label class="block text-[11px] font-bold mb-1 text-gray-500 uppercase">Ambil dari Kas</label><select id="swal-kat" class="w-full border p-3 rounded-xl mb-4">${optT}</select><label class="block text-[11px] font-bold mb-1 text-gray-500 uppercase">Nominal</label><input id="swal-nom" type="text" class="w-full border p-3 rounded-xl mb-4" oninput="formatRupiah(this)"><label class="block text-[11px] font-bold mb-1 text-gray-500 uppercase">Keterangan</label><textarea id="swal-ket" class="w-full border p-3 rounded-xl"></textarea></div>`, showCancelButton: true, confirmButtonText: 'Simpan', customClass: { popup: 'rounded-[32px]', confirmButton: 'bg-red-500 text-white font-bold py-3 px-4 rounded-xl w-full' } }).then((r) => { if (r.isConfirmed) prosesSimpanPengeluaran(); });
+  }, 300);
+}
+async function prosesSimpanPengeluaran() { Swal.fire({ title:'Mencatat...', didOpen:()=>Swal.showLoading()}); try { const res = await fetch(API_URL, {method:'POST', body:JSON.stringify({action:'simpan_pengeluaran', data:{kategori:document.getElementById('swal-kat').value, nominal:Number(document.getElementById('swal-nom').value.replace(/\./g, '')), keterangan:document.getElementById('swal-ket').value}})}); const result = await res.json(); if(result.success) { await muatUlangDataTanpaReload(); Swal.fire('Sukses', result.message, 'success'); } else Swal.fire('Gagal', result.message, 'error'); } catch (e) { Swal.fire('Error', 'Gagal', 'error'); } }
+
+// ==========================================
+// LAPORAN DINAMIS
+// ==========================================
+function renderLaporan(tabAktif = null, isBack = false) {
+  if (!isBack) history.pushState({ page: 'laporan' }, "", "#laporan"); updateNav(2); 
+  if (!appData || appData.setting.length === 0) return;
+  if (!tabAktif) tabAktif = appData.setting[0].jenis;
+
+  const dBayar = appData.pembayaran.filter(d => d.jenis === tabAktif);
+  let targetTotal = 0;
+  appData.santri.forEach(s => {
+    let k = s.kelas.toUpperCase(); let set = appData.setting.find(x => x.jenis === tabAktif);
+    if(set) targetTotal += k.includes('TK') ? set.TK : (k.includes('IBT') ? set.IBT : (k.includes('SANA') ? set.SANA : 0));
+  });
+
+  const msk = dBayar.reduce((s, i) => s + i.nominal, 0); const sisa = Math.max(0, targetTotal - msk);
+  const persen = targetTotal === 0 ? 0 : Math.round((msk / targetTotal) * 100);
+
+  let dropdownHTML = appData.setting.map(s => `<option value="${s.jenis}" ${tabAktif === s.jenis ? 'selected' : ''}>📋 Laporan Kas: ${s.jenis}</option>`).join('');
+
+  document.getElementById('app-content').innerHTML = `
+    <div class="max-w-2xl mx-auto pb-12 pt-4 px-7">
+      <div class="relative mb-6">
+        <select onchange="renderLaporan(this.value)" class="w-full bg-white border border-gray-100 shadow-sm rounded-2xl px-4 py-3.5 text-sm font-bold text-emerald-700 outline-none focus:border-emerald-500 cursor-pointer appearance-none transition-all">${dropdownHTML}</select>
+        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-emerald-500"><i class="fas fa-chevron-down"></i></div>
+      </div>
+      <div class="bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-[32px] p-7 shadow-xl shadow-emerald-200 mb-8 relative overflow-hidden"><div class="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-full blur-2xl -mr-10 -mt-10"></div><div class="relative z-10"><p class="text-emerald-100 text-[11px] font-medium uppercase tracking-widest mb-1">Sisa Kekurangan</p><h2 class="text-3xl font-extrabold text-white mb-6">Rp ${sisa.toLocaleString('id-ID')}</h2><div class="mb-6"><div class="flex justify-between text-[11px] text-emerald-100 mb-2 font-medium"><span>Progress Pembayaran</span><span class="font-bold text-white">${persen}%</span></div><div class="w-full bg-emerald-900/40 rounded-full h-2.5"><div class="bg-white h-2.5 rounded-full transition-all duration-1000 shadow-sm" style="width: ${persen}%"></div></div></div></div></div>
+      <div class="bg-white p-5 rounded-[24px] shadow-sm border border-gray-100 mb-8"><h3 class="text-[11px] font-bold text-gray-500 mb-4 uppercase tracking-wider flex items-center gap-2"><i class="fas fa-chart-pie text-emerald-500 text-sm"></i> Statistik Pembayaran</h3><div class="relative h-48 w-full flex justify-center"><canvas id="laporanChart"></canvas></div></div>
+      <div>
+        <h3 class="text-[11px] font-bold text-gray-500 mb-4 uppercase tracking-wider flex items-center gap-2"><i class="fas fa-history text-emerald-500 text-sm"></i> Riwayat Terbaru (${tabAktif})</h3>
+        ${dBayar.length === 0 ? '<div class="text-center py-10 text-xs text-gray-400">Belum ada transaksi.</div>' : ''}
+        <div class="flex flex-col gap-3">${dBayar.map((t, i) => `<div class="bg-white p-4 rounded-[20px] shadow-sm border border-gray-100 flex justify-between items-center overflow-hidden"><div class="flex items-center gap-3.5 flex-1"><div class="w-10 h-10 min-w-[40px] rounded-full bg-emerald-50 text-emerald-600 border-emerald-100 flex items-center justify-center font-bold text-sm border">${i + 1}</div><div class="flex-1 pr-2"><h4 class="font-bold text-sm text-gray-800 break-words leading-tight">${t.nama}</h4><p class="text-[10px] text-gray-400 mt-0.5">${t.kelas} • ${new Date(t.tanggal).toLocaleDateString('id-ID')}</p></div></div><div class="text-right flex-shrink-0 ml-3"><p class="text-sm font-bold text-emerald-600">+ Rp ${t.nominal.toLocaleString('id-ID')}</p></div></div>`).join('')}</div>
+      </div>
+    </div>`;
+  if (window.myChart instanceof Chart) window.myChart.destroy();
+  window.myChart = new Chart(document.getElementById('laporanChart'), { type: 'doughnut', data: { labels: ['Dana Masuk', 'Kekurangan Target'], datasets: [{ data: [msk, sisa === 0 && msk === 0 ? 1 : sisa], backgroundColor: ['#10b981', '#f3f4f6'], borderWidth: 0, hoverOffset: 5 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20, font: { size: 11 }, color: '#6b7280' } } } } });
+}
 
 // ==========================================
 // PENGATURAN (TAMBAH / HAPUS MANUAL)
 // ==========================================
 function renderSetting(isBack = false) {
-  if (!isBack) history.pushState({ page: 'setting' }, "", "#pengaturan"); updateNav(4); 
-  
+  if (!isBack) history.pushState({ page: 'setting' }, "", "#pengaturan"); updateNav(3); 
   let htmlCards = "";
-
-  // Jika semua tagihan dihapus, tampilkan tampilan kosong (empty state)
   if (dataSettingLokal.length === 0) {
-    htmlCards = `
-      <div class="bg-white p-8 rounded-[24px] shadow-sm border border-gray-200 mb-5 text-center border-dashed border-2">
-        <i class="fas fa-folder-open text-4xl text-gray-300 mb-3 block"></i>
-        <p class="text-sm text-gray-500 font-bold">Semua Tagihan Dihapus</p>
-        <p class="text-[11px] text-gray-400 mt-1">Silakan klik tombol di bawah untuk membuat catatan tagihan baru.</p>
-      </div>
-    `;
+    htmlCards = `<div class="bg-white p-8 rounded-[24px] shadow-sm border border-gray-200 mb-5 text-center border-dashed border-2"><i class="fas fa-folder-open text-4xl text-gray-300 mb-3 block"></i><p class="text-sm text-gray-500 font-bold">Semua Tagihan Dihapus</p><p class="text-[11px] text-gray-400 mt-1">Silakan klik tombol di bawah untuk membuat catatan tagihan baru.</p></div>`;
   } else {
-    // Jika ada data, tampilkan kartu pengaturan
     htmlCards = dataSettingLokal.map((set, i) => `
       <div class="bg-white p-5 rounded-[24px] shadow-sm border border-gray-200 mb-5 relative overflow-hidden">
         <div class="absolute top-0 left-0 w-1.5 h-full bg-teal-500"></div>
@@ -326,6 +369,7 @@ function renderSetting(isBack = false) {
       <button onclick="simpanSettingBiaya()" class="w-full bg-emerald-600 text-white font-bold py-3.5 rounded-2xl hover:bg-emerald-700 transition shadow-md"><i class="fas fa-save mr-2"></i> Simpan Pengaturan</button>
     </div>`;
 }
+
 function updateDataLokal(i, key, val) { if (key === 'jenis') dataSettingLokal[i][key] = val; else dataSettingLokal[i][key] = Number(val.replace(/\./g, '')); }
 function tambahFormSetting() { dataSettingLokal.push({ jenis: "", TK: 0, IBT: 0, SANA: 0 }); renderSetting(true); }
 function hapusFormSetting(i) {
@@ -344,144 +388,10 @@ async function simpanSettingBiaya() {
   try {
     const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'simpan_setting', data: dataToSave }) });
     const result = await res.json();
-    if (result.success) {
-        // Sinkronisasi data tanpa memuat ulang layar
-        await muatUlangDataTanpaReload(); 
-        Swal.fire({ icon: 'success', title: 'Berhasil!', timer: 1500, showConfirmButton: false });
-    } else {
-        Swal.fire('Gagal', result.message, 'error');
-    }
+    if (result.success) { await muatUlangDataTanpaReload(); Swal.fire({ icon: 'success', title: 'Berhasil!', timer: 1500, showConfirmButton: false }); } 
+    else Swal.fire('Gagal', result.message, 'error');
   } catch (error) { Swal.fire('Error', error.message, 'error'); }
 }
-
-// ==========================================
-// TRANSAKSI CEPAT & IMPORT 
-// ==========================================
-function bukaTransaksiCepat() { Swal.fire({ title: 'Pilih Transaksi', html: `<div class="grid grid-cols-2 gap-3 mt-4"><div onclick="bukaInputPemasukan()" class="bg-teal-50 border border-teal-200 p-4 rounded-2xl cursor-pointer hover:bg-teal-100 flex flex-col items-center gap-2"><div class="w-12 h-12 bg-teal-600 text-white rounded-full flex items-center justify-center text-xl shadow-md"><i class="fas fa-hand-holding-usd"></i></div><p class="text-xs font-bold text-teal-800 text-center mt-1">Terima<br>Pembayaran</p></div><div onclick="bukaInputPengeluaran()" class="bg-red-50 border border-red-200 p-4 rounded-2xl cursor-pointer hover:bg-red-100 flex flex-col items-center gap-2"><div class="w-12 h-12 bg-red-500 text-white rounded-full flex items-center justify-center text-xl shadow-md"><i class="fas fa-file-invoice-dollar"></i></div><p class="text-xs font-bold text-red-800 text-center mt-1">Catat<br>Pengeluaran</p></div></div>`, showConfirmButton: false, showCloseButton: true, position: 'bottom', customClass: { popup: 'rounded-t-3xl' } }); }
-
-function bukaInputPemasukan() {
-  Swal.close(); setTimeout(() => { if (!appData) return;
-    let optK = '<option value="" disabled selected>-- Pilih Kelas --</option>' + [...new Set(appData.santri.map(s => s.kelas))].sort().map(c => `<option value="${c}">${c}</option>`).join('');
-    let optT = appData.setting.map(s => `<option value="${s.jenis}">${s.jenis}</option>`).join('');
-    Swal.fire({ width: '400px', title: `<h3 class="text-xl font-extrabold text-gray-800">Terima Pembayaran</h3>`, html: `<div class="text-left mt-2"><div class="mb-4"><label class="block text-[11px] font-bold mb-1 text-gray-500 uppercase">Kelas</label><select id="swal-kelas" onchange="updateDropdownSantri(this.value)" class="w-full border p-3 rounded-xl">${optK}</select></div><div class="mb-4"><label class="block text-[11px] font-bold mb-1 text-gray-500 uppercase">Santri</label><select id="swal-nama" class="w-full border p-3 rounded-xl bg-gray-100" disabled><option value="">Pilih kelas dulu...</option></select></div><div class="mb-4"><label class="block text-[11px] font-bold mb-1 text-gray-500 uppercase">Jenis Tagihan</label><select id="swal-jenis" class="w-full border p-3 rounded-xl">${optT}</select></div><div class="mb-2"><label class="block text-[11px] font-bold mb-1 text-gray-500 uppercase">Nominal</label><input id="swal-nominal" type="text" class="w-full border p-3 rounded-xl" oninput="formatRupiah(this)"></div></div>`, showCancelButton: true, confirmButtonText: 'Simpan', customClass: { popup: 'rounded-[32px]', confirmButton: 'bg-teal-600 text-white font-bold py-3 px-4 rounded-xl w-full' }, preConfirm: () => { if (!document.getElementById('swal-kelas').value || !document.getElementById('swal-nama').value || !document.getElementById('swal-nominal').value) { Swal.showValidationMessage('Lengkapi data!'); return false; } } }).then((r) => { if (r.isConfirmed) simpanData(); });
-  }, 300);
-}
-function updateDropdownSantri(k) { const sel = document.getElementById('swal-nama'); sel.innerHTML = '<option value="" disabled selected>-- Pilih Nama --</option>' + appData.santri.filter(s => s.kelas === k).sort((a,b)=>a.nama.localeCompare(b.nama)).map(s => `<option value="${s.nama}">${s.nama}</option>`).join(''); sel.disabled = false; sel.classList.remove('bg-gray-100'); }
-
-function bukaInputPengeluaran() {
-  Swal.close(); setTimeout(() => {
-    let optT = appData.setting.map(s => `<option value="${s.jenis}">${s.jenis}</option>`).join('');
-    Swal.fire({ width: '400px', title: `<h3 class="text-xl font-extrabold text-gray-800">Catat Pengeluaran</h3>`, html: `<div class="text-left mt-2"><label class="block text-[11px] font-bold mb-1 text-gray-500 uppercase">Ambil dari Kas</label><select id="swal-kat" class="w-full border p-3 rounded-xl mb-4">${optT}</select><label class="block text-[11px] font-bold mb-1 text-gray-500 uppercase">Nominal</label><input id="swal-nom" type="text" class="w-full border p-3 rounded-xl mb-4" oninput="formatRupiah(this)"><label class="block text-[11px] font-bold mb-1 text-gray-500 uppercase">Keterangan</label><textarea id="swal-ket" class="w-full border p-3 rounded-xl"></textarea></div>`, showCancelButton: true, confirmButtonText: 'Simpan', customClass: { popup: 'rounded-[32px]', confirmButton: 'bg-red-500 text-white font-bold py-3 px-4 rounded-xl w-full' } }).then((r) => { if (r.isConfirmed) prosesSimpanPengeluaran(); });
-  }, 300);
-}
-async function prosesSimpanPengeluaran() { Swal.fire({ title:'Mencatat...', didOpen:()=>Swal.showLoading()}); try { const res = await fetch(API_URL, {method:'POST', body:JSON.stringify({action:'simpan_pengeluaran', data:{kategori:document.getElementById('swal-kat').value, nominal:Number(document.getElementById('swal-nom').value.replace(/\./g, '')), keterangan:document.getElementById('swal-ket').value}})}); const result = await res.json(); if(result.success) { await muatUlangDataTanpaReload(); Swal.fire('Sukses', result.message, 'success'); } else Swal.fire('Gagal', result.message, 'error'); } catch (e) { Swal.fire('Error', 'Gagal', 'error'); } }
-
-
-// ==========================================
-// LAPORAN DINAMIS
-// ==========================================
-function renderLaporan(tabAktif = null, isBack = false) {
-  if (!isBack) history.pushState({ page: 'laporan' }, "", "#laporan"); 
-  updateNav(3); 
-  if (!appData || appData.setting.length === 0) return;
-  
-  if (!tabAktif) tabAktif = appData.setting[0].jenis;
-
-  const dBayar = appData.pembayaran.filter(d => d.jenis === tabAktif);
-  let targetTotal = 0;
-  
-  appData.santri.forEach(s => {
-    let k = s.kelas.toUpperCase(); 
-    let set = appData.setting.find(x => x.jenis === tabAktif);
-    if(set) targetTotal += k.includes('TK') ? set.TK : (k.includes('IBT') ? set.IBT : (k.includes('SANA') ? set.SANA : 0));
-  });
-
-  const msk = dBayar.reduce((s, i) => s + i.nominal, 0); 
-  const sisa = Math.max(0, targetTotal - msk);
-  const persen = targetTotal === 0 ? 0 : Math.round((msk / targetTotal) * 100);
-
-  // MENGUBAH TABS MENJADI DROPDOWN
-  let dropdownHTML = appData.setting.map(s => 
-    `<option value="${s.jenis}" ${tabAktif === s.jenis ? 'selected' : ''}>📋 Laporan Kas: ${s.jenis}</option>`
-  ).join('');
-
-  document.getElementById('app-content').innerHTML = `
-    <div class="max-w-2xl mx-auto pb-12 pt-4 px-7">
-      
-      <!-- DROPDOWN PENGGANTI SWITCH -->
-      <div class="relative mb-6">
-        <select onchange="renderLaporan(this.value)" class="w-full bg-white border border-gray-100 shadow-sm rounded-2xl px-4 py-3.5 text-sm font-bold text-emerald-700 outline-none focus:border-emerald-500 cursor-pointer appearance-none transition-all">
-          ${dropdownHTML}
-        </select>
-        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-emerald-500">
-          <i class="fas fa-chevron-down"></i>
-        </div>
-      </div>
-
-      <div class="bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-[32px] p-7 shadow-xl shadow-emerald-200 mb-8 relative overflow-hidden">
-        <div class="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-full blur-2xl -mr-10 -mt-10"></div>
-        <div class="relative z-10">
-            <p class="text-emerald-100 text-[11px] font-medium uppercase tracking-widest mb-1">Sisa Kekurangan</p>
-            <h2 class="text-3xl font-extrabold text-white mb-6">Rp ${sisa.toLocaleString('id-ID')}</h2>
-            <div class="mb-6">
-                <div class="flex justify-between text-[11px] text-emerald-100 mb-2 font-medium"><span>Progress Pembayaran</span><span class="font-bold text-white">${persen}%</span></div>
-                <div class="w-full bg-emerald-900/40 rounded-full h-2.5">
-                    <div class="bg-white h-2.5 rounded-full transition-all duration-1000 shadow-sm" style="width: ${persen}%"></div>
-                </div>
-            </div>
-        </div>
-      </div>
-      
-      <div class="bg-white p-5 rounded-[24px] shadow-sm border border-gray-100 mb-8">
-        <h3 class="text-[11px] font-bold text-gray-500 mb-4 uppercase tracking-wider flex items-center gap-2"><i class="fas fa-chart-pie text-emerald-500 text-sm"></i> Statistik Pembayaran</h3>
-        <div class="relative h-48 w-full flex justify-center"><canvas id="laporanChart"></canvas></div>
-      </div>
-      
-      <div>
-        <h3 class="text-[11px] font-bold text-gray-500 mb-4 uppercase tracking-wider flex items-center gap-2"><i class="fas fa-history text-emerald-500 text-sm"></i> Riwayat Terbaru (${tabAktif})</h3>
-        ${dBayar.length === 0 ? '<div class="text-center py-10 text-xs text-gray-400">Belum ada transaksi.</div>' : ''}
-        <div class="flex flex-col gap-3">
-            ${dBayar.map((t, i) => `
-                <div class="bg-white p-4 rounded-[20px] shadow-sm border border-gray-100 flex justify-between items-center overflow-hidden">
-                    <div class="flex items-center gap-3.5 flex-1">
-                        <div class="w-10 h-10 min-w-[40px] rounded-full bg-emerald-50 text-emerald-600 border-emerald-100 flex items-center justify-center font-bold text-sm border">${i + 1}</div>
-                        <div class="flex-1 pr-2">
-                            <h4 class="font-bold text-sm text-gray-800 break-words leading-tight">${t.nama}</h4>
-                            <p class="text-[10px] text-gray-400 mt-0.5">${t.kelas} • ${new Date(t.tanggal).toLocaleDateString('id-ID')}</p>
-                        </div>
-                    </div>
-                    <div class="text-right flex-shrink-0 ml-3">
-                        <p class="text-sm font-bold text-emerald-600">+ Rp ${t.nominal.toLocaleString('id-ID')}</p>
-                    </div>
-                </div>
-            `).join('')}
-        </div>
-      </div>
-    </div>`;
-    
-  if (window.myChart instanceof Chart) window.myChart.destroy();
-  window.myChart = new Chart(document.getElementById('laporanChart'), { 
-      type: 'doughnut', 
-      data: { 
-          labels: ['Dana Masuk', 'Kekurangan Target'], 
-          datasets: [{ 
-              data: [msk, sisa === 0 && msk === 0 ? 1 : sisa], 
-              backgroundColor: ['#10b981', '#f3f4f6'], 
-              borderWidth: 0,
-              hoverOffset: 5
-          }] 
-      }, 
-      options: { 
-          responsive: true, 
-          maintainAspectRatio: false, 
-          cutout: '75%',
-          plugins: { 
-              legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20, font: { size: 11 }, color: '#6b7280' } } 
-          }
-      } 
-  });
-}
-
 
 // ==========================================
 // IMPORT EXCEL DLL
@@ -499,63 +409,23 @@ function bukaFormImport() {
           <span class="font-bold text-gray-700 bg-gray-100 px-2 py-1.5 rounded-md mt-2 inline-block shadow-inner border border-gray-200 text-[10px]">NIS, Nama, JK, TTL, Kelas, Alamat, Ayah, Ibu, HP</span>
         </p>
         <div class="relative group">
-          <input type="file" id="fileImport" accept=".xlsx, .xls, .csv" 
-            class="block w-full text-sm text-gray-500 
-            file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 
-            file:text-sm file:font-bold file:bg-emerald-50 file:text-emerald-700 
-            hover:file:bg-emerald-100 cursor-pointer 
-            border border-gray-200 rounded-xl bg-gray-50 p-1.5 outline-none transition-all shadow-inner">
+          <input type="file" id="fileImport" accept=".xlsx, .xls, .csv" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer border border-gray-200 rounded-xl bg-gray-50 p-1.5 outline-none transition-all shadow-inner">
         </div>
       </div>
     `,
-    showCancelButton: true,
-    buttonsStyling: false, 
-    confirmButtonText: '<i class="fas fa-cloud-upload-alt mr-1"></i> Mulai Sinkronisasi',
-    cancelButtonText: 'Batal',
-    customClass: {
-      popup: 'rounded-[32px]',
-      confirmButton: 'bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-xl w-full transition-colors shadow-md',
-      cancelButton: 'bg-gray-200 hover:bg-gray-300 text-gray-600 font-bold py-3 px-4 rounded-xl w-full transition-colors',
-      actions: 'flex gap-3 w-full px-5 pb-2 mt-4',
-      htmlContainer: 'm-0 px-5'
-    },
-    preConfirm: () => {
-      const file = document.getElementById('fileImport').files[0];
-      if (!file) {
-        Swal.showValidationMessage('Silakan pilih file Excel terlebih dahulu!');
-        return false;
-      }
-      return file;
-    }
+    showCancelButton: true, buttonsStyling: false, confirmButtonText: '<i class="fas fa-cloud-upload-alt mr-1"></i> Mulai Sinkronisasi', cancelButtonText: 'Batal',
+    customClass: { popup: 'rounded-[32px]', confirmButton: 'bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-xl w-full transition-colors shadow-md', cancelButton: 'bg-gray-200 hover:bg-gray-300 text-gray-600 font-bold py-3 px-4 rounded-xl w-full transition-colors', actions: 'flex gap-3 w-full px-5 pb-2 mt-4', htmlContainer: 'm-0 px-5' },
+    preConfirm: () => { const file = document.getElementById('fileImport').files[0]; if (!file) { Swal.showValidationMessage('Silakan pilih file Excel!'); return false; } return file; }
   }).then((result) => {
     if (result.isConfirmed) {
       const reader = new FileReader();
       reader.onload = function(e) {
         const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
         const raw = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
-        
-        // SMART PARSING: Membaca 9 Kolom sesuai format Excel Anda
         const d = raw.map(row => {
-          const getVal = (keyMatch) => {
-            for (let k in row) {
-              if (k.toString().toUpperCase().trim().includes(keyMatch)) return row[k];
-            }
-            return "-"; // Default jika data di cell tersebut kosong
-          };
-          
-          return { 
-            NIS: getVal('NIS') !== "-" ? getVal('NIS') : getVal('NO'), 
-            Nama: getVal('NAMA'), 
-            JK: getVal('JK'), 
-            TTL: getVal('TTL'), 
-            Kelas: getVal('KELAS'), 
-            Alamat: getVal('ALAMAT'), 
-            Ayah: getVal('AYAH'), 
-            Ibu: getVal('IBU'), 
-            HP: getVal('HP')
-          };
+          const getVal = (keyMatch) => { for (let k in row) { if (k.toString().toUpperCase().trim().includes(keyMatch)) return row[k]; } return "-"; };
+          return { NIS: getVal('NIS') !== "-" ? getVal('NIS') : getVal('NO'), Nama: getVal('NAMA'), JK: getVal('JK'), TTL: getVal('TTL'), Kelas: getVal('KELAS'), Alamat: getVal('ALAMAT'), Ayah: getVal('AYAH'), Ibu: getVal('IBU'), HP: getVal('HP') };
         });
-        
         kirimDataImportKeServer(d);
       };
       reader.readAsArrayBuffer(result.value);
@@ -567,59 +437,34 @@ async function kirimDataImportKeServer(d) {
   Swal.fire({ title:'Mengupload...', didOpen:()=>Swal.showLoading()}); 
   try { 
     await fetch(API_URL, {method:'POST', body:JSON.stringify({action:'import_santri', data: d})}); 
-    await muatUlangDataTanpaReload(); // Sinkronisasi halus
+    await muatUlangDataTanpaReload(); 
     Swal.fire('Sukses', 'Data berhasil diimport', 'success'); 
-  } catch (e) { 
-    Swal.fire('Info', 'Cek database', 'info'); 
-  } 
+  } catch (e) { Swal.fire('Info', 'Cek database', 'info'); } 
 }
 
 // ==========================================
 // PWA: NOTIFIKASI INSTALL APLIKASI
 // ==========================================
 let deferredPrompt;
-
-// Menangkap event dari browser saat aplikasi siap diinstal
 window.addEventListener('beforeinstallprompt', (e) => {
-  // Mencegah popup install bawaan browser yang kurang rapi
-  e.preventDefault();
-  deferredPrompt = e;
-  
-  // Tampilkan banner kustom kita
+  e.preventDefault(); deferredPrompt = e;
   const installBanner = document.getElementById('install-banner');
   if (installBanner && !localStorage.getItem('pwa_ditolak')) {
     installBanner.classList.remove('hidden');
-    // Animasi turun (slide down)
-    setTimeout(() => {
-      installBanner.classList.remove('-translate-y-20', 'opacity-0');
-      installBanner.classList.add('translate-y-0', 'opacity-100');
-    }, 100);
+    setTimeout(() => { installBanner.classList.remove('-translate-y-20', 'opacity-0'); installBanner.classList.add('translate-y-0', 'opacity-100'); }, 100);
   }
 });
 
-// Aksi ketika tombol "Install" ditekan
 document.getElementById('btn-install')?.addEventListener('click', async () => {
   const installBanner = document.getElementById('install-banner');
-  // Sembunyikan banner
   installBanner.classList.add('-translate-y-20', 'opacity-0');
   setTimeout(() => installBanner.classList.add('hidden'), 500);
-
-  if (deferredPrompt) {
-    // Munculkan dialog install asli sistem operasi
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    console.log(`Pilihan user: ${outcome}`);
-    deferredPrompt = null;
-  }
+  if (deferredPrompt) { deferredPrompt.prompt(); const { outcome } = await deferredPrompt.userChoice; deferredPrompt = null; }
 });
 
-// Aksi ketika tombol "Batal" ditekan
 document.getElementById('btn-tutup-install')?.addEventListener('click', () => {
   const installBanner = document.getElementById('install-banner');
-  // Sembunyikan banner
   installBanner.classList.add('-translate-y-20', 'opacity-0');
   setTimeout(() => installBanner.classList.add('hidden'), 500);
-  
-  // Simpan di memori agar banner tidak mengganggu jika user sudah menolak
   localStorage.setItem('pwa_ditolak', 'true');
 });
