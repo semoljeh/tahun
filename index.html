@@ -26,6 +26,20 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
+  
+  <!-- Meta Tags untuk WhatsApp & Media Sosial (Open Graph) -->
+  <meta property="og:title" content="Biro Keuangan - Manajemen Keuangan MADASA">
+  <meta property="og:description" content="Sistem administrasi pembayaran santri terpadu untuk pencatatan uang ujian dan rapor secara otomatis dan digital.">
+  
+  <!-- URL DISESUAIKAN DENGAN GITHUB PAGES ANDA -->
+  <meta property="og:image" content="https://semoljeh.github.io/tahun/logo.png">
+  <meta property="og:url" content="https://semoljeh.github.io/tahun/">
+  
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  
+  
+  
 <script>
   tailwind.config = {
     theme: { 
@@ -76,6 +90,23 @@
 
   <!-- ========================================== -->
   <!-- KODE BARU: LAYAR LOGIN -->
+  
+  <!-- BANNER NOTIFIKASI INSTALL PWA -->
+  <div id="install-banner" class="hidden fixed top-4 left-1/2 -translate-x-1/2 w-[90%] max-w-[400px] bg-white rounded-2xl shadow-2xl border border-teal-100 p-4 z-[100] flex items-center justify-between transition-all duration-500 transform -translate-y-20 opacity-0">
+    <div class="flex items-center gap-3">
+      <img src="logo.png" alt="Logo" class="w-10 h-10 rounded-xl shadow-sm border border-gray-100">
+      <div>
+        <h4 class="text-sm font-bold text-gray-800 leading-tight">Install Aplikasi</h4>
+        <p class="text-[10px] text-gray-500 mt-0.5">Pasang di layar utama HP Anda.</p>
+      </div>
+    </div>
+    <div class="flex gap-2">
+      <button id="btn-tutup-install" class="text-[10px] font-bold text-gray-400 hover:text-gray-600 px-2 py-2">Batal</button>
+      <button id="btn-install" class="bg-teal-600 text-white text-[11px] font-bold py-2 px-4 rounded-xl shadow-md hover:bg-teal-700 transition-colors">Install</button>
+    </div>
+  </div>
+  
+  
   <div id="login-screen" class="min-h-screen flex items-center justify-center bg-gray-100 px-4 hidden">
     <div class="max-w-sm w-full bg-white p-8 rounded-[32px] shadow-soft text-center">
       <div class="w-16 h-16 bg-teal-50 text-teal-600 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl border border-teal-100">

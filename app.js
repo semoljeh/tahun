@@ -573,3 +573,53 @@ async function kirimDataImportKeServer(d) {
     Swal.fire('Info', 'Cek database', 'info'); 
   } 
 }
+
+// ==========================================
+// PWA: NOTIFIKASI INSTALL APLIKASI
+// ==========================================
+let deferredPrompt;
+
+// Menangkap event dari browser saat aplikasi siap diinstal
+window.addEventListener('beforeinstallprompt', (e) => {
+  // Mencegah popup install bawaan browser yang kurang rapi
+  e.preventDefault();
+  deferredPrompt = e;
+  
+  // Tampilkan banner kustom kita
+  const installBanner = document.getElementById('install-banner');
+  if (installBanner && !localStorage.getItem('pwa_ditolak')) {
+    installBanner.classList.remove('hidden');
+    // Animasi turun (slide down)
+    setTimeout(() => {
+      installBanner.classList.remove('-translate-y-20', 'opacity-0');
+      installBanner.classList.add('translate-y-0', 'opacity-100');
+    }, 100);
+  }
+});
+
+// Aksi ketika tombol "Install" ditekan
+document.getElementById('btn-install')?.addEventListener('click', async () => {
+  const installBanner = document.getElementById('install-banner');
+  // Sembunyikan banner
+  installBanner.classList.add('-translate-y-20', 'opacity-0');
+  setTimeout(() => installBanner.classList.add('hidden'), 500);
+
+  if (deferredPrompt) {
+    // Munculkan dialog install asli sistem operasi
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    console.log(`Pilihan user: ${outcome}`);
+    deferredPrompt = null;
+  }
+});
+
+// Aksi ketika tombol "Batal" ditekan
+document.getElementById('btn-tutup-install')?.addEventListener('click', () => {
+  const installBanner = document.getElementById('install-banner');
+  // Sembunyikan banner
+  installBanner.classList.add('-translate-y-20', 'opacity-0');
+  setTimeout(() => installBanner.classList.add('hidden'), 500);
+  
+  // Simpan di memori agar banner tidak mengganggu jika user sudah menolak
+  localStorage.setItem('pwa_ditolak', 'true');
+});
