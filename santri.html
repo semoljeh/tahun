@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Pantauan Pembayaran Santri MADASA</title>
+  
+  <link rel="icon" type="image/png" href="logo.png">
+  <meta name="description" content="Portal resmi pengecekan status pembayaran Uang Ujian dan Uang Rapor santri MADASA secara online dan real-time.">
+  <meta property="og:title" content="Pantauan Pembayaran Santri MADASA">
+  <meta property="og:description" content="Portal resmi pengecekan status pembayaran santri MADASA secara online dan real-time.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="https://santri.madasa.web.id/logo.png"> 
+
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: { 
+        extend: { 
+          fontFamily: { sans: ['Outfit', 'sans-serif'] },
+          colors: { teal: { 500: '#14b8a6', 600: '#0d9488', 700: '#0f766e' } } 
+        } 
+      }
+    }
+  </script>
+  
+  <style>
+    body { background-color: #f3f4f6; }
+    .mobile-container { max-width: 480px; margin: 0 auto; background-color: #fafaf9; min-height: 100vh; box-shadow: 0 0 50px rgba(0,0,0,0.05); }
+    .hide-scroll::-webkit-scrollbar { display: none; }
+  </style>
+</head>
+
+<body class="text-gray-800 font-sans antialiased">
+  <div class="mobile-container pb-2">
+
+    <!-- Header Publik Asli -->
+    <header class="bg-gradient-to-r from-teal-700 to-teal-600 text-white p-6 rounded-b-[2rem] shadow-md relative overflow-hidden text-center">
+      <div class="relative z-10">
+        <div class="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center border border-white/30 mx-auto mb-3 shadow-inner">
+          <i class="fas fa-search-dollar text-2xl"></i>
+        </div>
+        <h1 class="text-xl font-bold tracking-tight">Portal Informasi Tagihan</h1>
+        <p class="text-xs text-emerald-100 mt-1 opacity-90 mb-4">Cek Status Pembayaran Santri MADASA</p>
+        
+        <!-- Tombol Share WhatsApp -->
+        <a href="https://wa.me/?text=https://santri.madasa.web.id/santri.html" target="_blank" class="inline-flex items-center gap-2 bg-[#25D366] hover:bg-green-600 text-white text-[11px] font-bold py-2 px-4 rounded-full transition-colors shadow-sm">
+          <i class="fab fa-whatsapp text-base"></i> Bagikan Info Ini
+        </a>
+      </div>
+    </header>
+
+    <div id="loading" class="text-center py-20">
+      <p class="text-sm text-gray-500 font-medium">Sedang mengambil data terbaru...</p>
+    </div>
+
+    <main id="app-content" class="hidden px-6 pt-6">
+      <!-- TAB DINAMIS -->
+      <div id="dynamic-tabs" class="flex bg-gray-200/70 p-1.5 rounded-2xl mb-6 shadow-inner overflow-x-auto hide-scroll gap-1"></div>
+      
+      <!-- Dropdown Filter Kelas -->
+      <select id="filterKelas" onchange="renderData(tabAktif)" class="w-full p-3 rounded-xl border border-gray-200 font-bold text-gray-700 bg-white shadow-sm outline-none focus:border-teal-500 transition-all cursor-pointer text-sm mb-6">
+          <option value="semua">-- Tampilkan Semua Kelas --</option>
+      </select>
+      
+      <!-- Kartu Statistik -->
+      <div class="grid grid-cols-2 gap-3 mb-6">
+        <div class="bg-emerald-50 border border-emerald-100 p-4 rounded-3xl text-center shadow-sm">
+          <p class="text-[10px] text-emerald-600 font-bold uppercase tracking-wider mb-1">Sudah Bayar</p>
+          <h3 id="stat-lunas" class="text-3xl font-black text-emerald-700">0</h3>
+        </div>
+        <div class="bg-red-50 border border-red-100 p-4 rounded-3xl text-center shadow-sm">
+          <p class="text-[10px] text-red-600 font-bold uppercase tracking-wider mb-1">Belum Lunas</p>
+          <h3 id="stat-belum" class="text-3xl font-black text-red-700">0</h3>
+        </div>
+      </div>
+	
+      <!-- Area Daftar Santri -->
+      <div id="list-santri" class="flex flex-col gap-3"></div>
+    </main>
+
+    <!-- FOOTER PEMBATAS ASLI -->
+    <footer class="mt-4 pb-2 pt-4 border-t border-gray-200/60 text-center mx-6">
+      <div class="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-1.5 text-gray-400">
+        <i class="fas fa-shield-alt text-[10px]"></i>
+      </div>
+      <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Biro Keuangan MADASA</p>
+      <p class="text-[9px] font-medium text-gray-400 mt-0.5">&copy; 2026 Seluruh hak cipta dilindungi.</p>
+    </footer>
+	
+  </div>
+
+  <script>
+// GANTI DENGAN URL WEB APP BARU ANDA
+const API_URL = 'https://script.google.com/macros/s/AKfycbw_3nXIX3ImNvInprrbige_K3g4ShuMZDYDvvx9v-m5clzEz60ZYautWFCDCNupETpI/exec';
+
+let appData = null; 
+let tabAktif = null;
+
+window.onload = async () => {
+  try {
+    const res = await fetch(API_URL); 
+    appData = await res.json();
+    
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('app-content').classList.remove('hidden');
+    
+    // Isi dropdown kelas
+    let unikKelas = [...new Set(appData.santri.map(s => s.kelas))].sort();
+    unikKelas.forEach(k => {
+      document.getElementById('filterKelas').insertAdjacentHTML('beforeend', `<option value="${k}">${k}</option>`);
+    });
+    
+    renderData();
+  } catch (e) { 
+    document.getElementById('loading').innerHTML = '<p class="text-red-500 font-bold mt-4">Gagal memuat data dari server. Pastikan koneksi stabil.</p>'; 
+  }
+};
+
+function renderData(jenis = null) {
+  let settingBiaya = appData.setting || [];
+  if (settingBiaya.length === 0) {
+    document.getElementById('list-santri').innerHTML = '<p class="text-center text-sm text-gray-500 py-6">Belum ada pengaturan tagihan.</p>';
+    return;
+  }
+  
+  let semuaJenis = settingBiaya.map(s => s.jenis);
+  tabAktif = (jenis && semuaJenis.includes(jenis)) ? jenis : semuaJenis[0];
+
+  // Render Tabs
+  document.getElementById('dynamic-tabs').innerHTML = semuaJenis.map(j => 
+    `<button onclick="renderData('${j}')" class="flex-1 min-w-[110px] py-3 text-xs font-bold rounded-xl transition-all ${tabAktif === j ? 'bg-white text-teal-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}">${j}</button>`
+  ).join('');
+
+  let k = document.getElementById('filterKelas').value;
+  let santriFilter = k === 'semua' ? appData.santri : appData.santri.filter(s => s.kelas === k);
+  let setAktif = settingBiaya.find(s => s.jenis === tabAktif);
+
+  // OPTIMASI: Kumpulkan total pembayaran per nama santri di awal agar lebih cepat (O(N))
+  let totalBayarPerSantri = {};
+  (appData.pembayaran || []).forEach(p => {
+    if (p.jenis === tabAktif) {
+      totalBayarPerSantri[p.nama] = (totalBayarPerSantri[p.nama] || 0) + p.nominal;
+    }
+  });
+
+  let dataS = santriFilter.map(s => {
+    let t = 0; 
+    let kl = s.kelas.toUpperCase();
+    
+    // Penentuan target biaya berdasarkan nama kelas
+    if (kl.includes('TK')) t = setAktif.TK; 
+    else if (kl.includes('IBT')) t = setAktif.IBT; 
+    else if (kl.includes('SANA')) t = setAktif.SANA;
+
+    let byr = totalBayarPerSantri[s.nama] || 0;
+    let sisa = Math.max(0, t - byr); // Mencegah minus jika ada kelebihan bayar
+    let st = t > 0 ? (sisa <= 0 ? 'Lunas' : (byr > 0 ? 'Nyicil' : 'Belum')) : 'Belum';
+    
+    return { ...s, sisa, st };
+  }).sort((a,b) => {
+    // Menyederhanakan logika sorting
+    const order = { 'Belum': 1, 'Nyicil': 2, 'Lunas': 3 };
+    return order[a.st] - order[b.st];
+  });
+
+  // Update Statistik
+  document.getElementById('stat-lunas').innerText = dataS.filter(s => s.st !== 'Belum').length;
+  document.getElementById('stat-belum').innerText = dataS.filter(s => s.st === 'Belum').length;
+
+  // Render List Santri
+  if (dataS.length === 0) {
+    document.getElementById('list-santri').innerHTML = '<p class="text-center text-sm text-gray-500 py-6">Tidak ada data santri ditemukan.</p>';
+  } else {
+    document.getElementById('list-santri').innerHTML = dataS.map((s,i) => `
+      <div class="bg-white p-4 rounded-2xl shadow-sm border flex justify-between items-center mb-3">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 min-w-[40px] rounded-full flex items-center justify-center font-bold text-sm bg-gray-100">${i+1}</div>
+          <div>
+            <h4 class="font-bold text-sm">${s.nama}</h4>
+            <p class="text-[10px] text-gray-400">${s.kelas}</p>
+          </div>
+        </div>
+        <div class="text-right flex flex-col items-end min-w-[80px]">
+          <span class="px-3 py-1 rounded-lg text-[10px] font-bold tracking-wider mb-1 ${s.st === 'Lunas' ? 'bg-emerald-100 text-emerald-700' : (s.st === 'Nyicil' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700')}">${s.st.toUpperCase()}</span>
+          ${s.st !== 'Lunas' ? `<span class="text-[9px] font-bold text-gray-400">Kurang Rp ${s.sisa.toLocaleString('id-ID')}</span>` : ''}
+        </div>
+      </div>
+    `).join('');
+  }
+}
+  </script>
+</body>
+</html>
