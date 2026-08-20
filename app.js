@@ -32,7 +32,7 @@ Swal.fire = function(...args) {
 // ==========================================
 // INISIALISASI & LOGIN
 // ==========================================
-if (localStorage.getItem('sudahLogin') === 'true') {
+if (sessionStorage.getItem('sudahLogin') === 'true') {
   document.getElementById('login-screen')?.classList.add('hidden');
   tampilkanAplikasiUtama();
 } else {
@@ -41,7 +41,7 @@ if (localStorage.getItem('sudahLogin') === 'true') {
 
 function prosesLogin() {
   if (document.getElementById('inputPassword').value === PIN_SISTEM) {
-    localStorage.setItem('sudahLogin', 'true'); 
+    sessionStorage.setItem('sudahLogin', 'true'); 
     tampilkanAplikasiUtama();
   } else {
     Swal.fire({ icon: 'error', title: 'Akses Ditolak', text: 'PIN salah!', confirmButtonColor: '#0f766e' });
@@ -57,9 +57,9 @@ function prosesLogout() {
     showCancelButton: true, confirmButtonColor: '#d33', cancelButtonColor: '#94a3b8',
     confirmButtonText: '<i class="fas fa-sign-out-alt mr-1"></i> Ya, Keluar', cancelButtonText: 'Batal',
     customClass: { popup: 'rounded-[32px]' }
-  }).then((result) => {
-    if (result.isConfirmed) { localStorage.removeItem('sudahLogin'); location.reload(); }
-  });
+}).then((result) => {
+  if (result.isConfirmed) { sessionStorage.removeItem('sudahLogin'); location.reload(); }
+});
 }
 
 async function tampilkanAplikasiUtama() {
