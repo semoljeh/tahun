@@ -1,8 +1,9 @@
 // GANTI DENGAN URL WEB APP GAS ANDA YANG BARU SETELAH DEPLOY!
-const API_URL = 'https://script.google.com/macros/s/AKfycbx_LLw83GVcei5nM_L4tdDFX7OECth4mq2ABlfndCSvNloBQ422uPrprjvxCnqTF9e4Kw/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbwapA5PE31lDsFqeLnzbJDsEq6IkLpVQrxbk8Ig8D-c0aXAgu-I-rbLAcO0gsbpFNhGqg/exec';
 let appData = null;
 let dataSettingLokal = [];
 const PIN_SISTEM = "112233"; 
+window.laporanTabAktif = null;
 
 // ==========================================
 // SINKRONISASI TOMBOL KEMBALI & ROUTING CERDAS
@@ -28,7 +29,6 @@ Swal.fire = function(...args) {
 // ==========================================
 // INISIALISASI & LOGIN
 // ==========================================
-// Mengeksekusi pengecekan secara instan (menghilangkan kedipan)
 if (localStorage.getItem('sudahLogin') === 'true') {
   document.getElementById('login-screen')?.classList.add('hidden');
   tampilkanAplikasiUtama();
@@ -51,17 +51,11 @@ function prosesLogout() {
     title: 'Keluar dari Sistem?',
     text: 'Sesi Anda akan ditutup dan membutuhkan PIN untuk masuk kembali.',
     icon: 'question',
-    showCancelButton: true,
-    confirmButtonColor: '#d33',
-    cancelButtonColor: '#94a3b8',
-    confirmButtonText: '<i class="fas fa-sign-out-alt mr-1"></i> Ya, Keluar',
-    cancelButtonText: 'Batal',
+    showCancelButton: true, confirmButtonColor: '#d33', cancelButtonColor: '#94a3b8',
+    confirmButtonText: '<i class="fas fa-sign-out-alt mr-1"></i> Ya, Keluar', cancelButtonText: 'Batal',
     customClass: { popup: 'rounded-[32px]' }
   }).then((result) => {
-    if (result.isConfirmed) {
-      localStorage.removeItem('sudahLogin'); 
-      location.reload(); 
-    }
+    if (result.isConfirmed) { localStorage.removeItem('sudahLogin'); location.reload(); }
   });
 }
 
@@ -99,11 +93,8 @@ function formatRupiah(input) {
 
 function updateNav(index) { 
   document.querySelectorAll('.nav-btn').forEach((btn, i) => {
-    if (i === index) {
-      btn.className = 'nav-btn text-emerald-600 flex flex-col items-center gap-1 transform scale-110 transition-all font-bold';
-    } else {
-      btn.className = 'nav-btn text-gray-400 flex flex-col items-center gap-1 hover:text-emerald-500 transition-colors opacity-60 hover:opacity-100 font-normal';
-    }
+    if (i === index) btn.className = 'nav-btn text-emerald-600 flex flex-col items-center gap-1 transform scale-110 transition-all font-bold';
+    else btn.className = 'nav-btn text-gray-400 flex flex-col items-center gap-1 hover:text-emerald-500 transition-colors opacity-60 hover:opacity-100 font-normal';
   }); 
 }
 
@@ -206,17 +197,28 @@ function bukaFormPembayaran(nis = '', nama = '', kelas = '') {
 
 async function simpanData() {
   let nisKirim = "";
-  let namaKirim = document.getElementById('swal-nama').value;
+  let namaKirim = "";
   
-  if (document.getElementById('swal-nis')) {
-      nisKirim = document.getElementById('swal-nis').value;
+  let elNama = document.getElementById('swal-nama');
+  let elNis = document.getElementById('swal-nis');
+  
+  if (elNis) {
+      nisKirim = elNis.value;
+      namaKirim = elNama.value;
   } else {
-      let val = namaKirim;
-      if(val.includes('|')) {
+      let val = elNama.value;
+      if(val && val.includes('|')) {
          let split = val.split('|');
          nisKirim = split[0];
          namaKirim = split[1];
+      } else {
+         namaKirim = val;
       }
+  }
+
+  if (!nisKirim || nisKirim === "") {
+     Swal.fire('Gagal', 'Sistem menolak: Santri tidak memiliki NIS. Silakan perbaiki Master Data Santri Anda.', 'error');
+     return;
   }
 
   const payload = { 
@@ -235,7 +237,8 @@ async function simpanData() {
 function lihatRiwayat(nisSantri, namaSantri, kelasSantri, event) {
   if (event) event.stopPropagation(); if (!appData) return;
   const k = kelasSantri.toUpperCase();
-  const riwayatSantri = appData.pembayaran.filter(p => p.nis === nisSantri || (p.nama === namaSantri && p.kelas === kelasSantri));
+  
+  const riwayatSantri = appData.pembayaran.filter(p => p.nis === nisSantri || (p.nis === "" && p.nama === namaSantri && p.kelas === kelasSantri));
 
   let infoSisaPanel = appData.setting.map(set => {
     let target = k.includes('TK') ? set.TK : (k.includes('IBT') ? set.IBT : (k.includes('SANA') ? set.SANA : 0));
@@ -251,7 +254,7 @@ function lihatRiwayat(nisSantri, namaSantri, kelasSantri, event) {
 
   let listRiwayat = riwayatSantri.length === 0 ? `<div class="text-center py-4"><p class="text-xs text-gray-400">Belum ada cicilan.</p></div>` : riwayatSantri.map(r => `<div class="flex justify-between items-center border-b border-gray-100 py-3 last:border-0"><div class="text-left"><p class="text-xs font-bold text-gray-800 uppercase">${r.jenis}</p><p class="text-[10px] text-gray-400 mt-0.5"><i class="far fa-calendar-alt"></i> ${new Date(r.tanggal).toLocaleDateString('id-ID')}</p></div><div class="text-right font-bold text-emerald-600 text-sm flex items-center gap-3"><span>+ Rp ${r.nominal.toLocaleString('id-ID')}</span><button onclick="hapusRiwayat('${r.jenis}', ${r.row})" class="text-red-400 hover:text-red-600 hover:bg-red-50 p-1 rounded-md"><i class="fas fa-trash-alt"></i></button></div></div>`).join('');
 
-  Swal.fire({ title: `<div class="text-base text-gray-800 pt-2 font-bold"><i class="fas fa-history text-blue-500 mr-1"></i> Detail Pembayaran</div>`, html: `<p class="text-xs text-gray-500 mb-3 font-bold border-b pb-2">${namaSantri} <span class="block font-normal mt-1">${kelasSantri}</span></p>${infoSisaPanel}<p class="text-[10px] font-bold text-gray-400 uppercase text-left mb-1 px-1 mt-3">Riwayat Cicilan</p><div class="max-h-48 overflow-y-auto hide-scroll bg-white p-3 rounded-2xl shadow-inner border border-gray-100">${listRiwayat}</div>`, showCloseButton: true, showConfirmButton: false, customClass: { popup: 'rounded-[32px] bg-gray-50' } });
+  Swal.fire({ title: `<div class="text-base text-gray-800 pt-2 font-bold"><i class="fas fa-history text-blue-500 mr-1"></i> Detail Pembayaran</div>`, html: `<p class="text-xs text-gray-500 mb-3 font-bold border-b pb-2">${namaSantri} <span class="block font-normal mt-1">${kelasSantri}</span><span class="block text-[9px] font-bold text-gray-400 mt-1">NIS: ${nisSantri}</span></p>${infoSisaPanel}<p class="text-[10px] font-bold text-gray-400 uppercase text-left mb-1 px-1 mt-3">Riwayat Cicilan</p><div class="max-h-48 overflow-y-auto hide-scroll bg-white p-3 rounded-2xl shadow-inner border border-gray-100">${listRiwayat}</div>`, showCloseButton: true, showConfirmButton: false, customClass: { popup: 'rounded-[32px] bg-gray-50' } });
 }
 
 function hapusRiwayat(jenis, row) { 
@@ -275,13 +278,18 @@ function bukaInputPemasukan() {
     const uniqueClasses = [...new Set(appData.santri.map(s => s.kelas).filter(k => k))].sort();
     let optK = '<option value="" disabled selected>-- Pilih Kelas --</option>' + uniqueClasses.map(c => `<option value="${c}">${c}</option>`).join('');
     let optT = appData.setting.map(s => `<option value="${s.jenis}">${s.jenis}</option>`).join('');
-    Swal.fire({ width: '400px', title: `<h3 class="text-xl font-extrabold text-gray-800">Terima Pembayaran</h3>`, html: `<div class="text-left mt-2"><div class="mb-4"><label class="block text-[11px] font-bold mb-1 text-gray-500 uppercase">Kelas</label><select id="swal-kelas" onchange="updateDropdownSantri(this.value)" class="w-full border p-3 rounded-xl">${optK}</select></div><div class="mb-4"><label class="block text-[11px] font-bold mb-1 text-gray-500 uppercase">Santri</label><select id="swal-nama" class="w-full border p-3 rounded-xl bg-gray-100" disabled><option value="">Pilih kelas dulu...</option></select></div><div class="mb-4"><label class="block text-[11px] font-bold mb-1 text-gray-500 uppercase">Jenis Tagihan</label><select id="swal-jenis" class="w-full border p-3 rounded-xl">${optT}</select></div><div class="mb-2"><label class="block text-[11px] font-bold mb-1 text-gray-500 uppercase">Nominal</label><input id="swal-nominal" type="text" class="w-full border p-3 rounded-xl" oninput="formatRupiah(this)"></div></div>`, showCancelButton: true, confirmButtonText: 'Simpan', customClass: { popup: 'rounded-[32px]', confirmButton: 'bg-teal-600 text-white font-bold py-3 px-4 rounded-xl w-full' }, preConfirm: () => { if (!document.getElementById('swal-kelas').value || !document.getElementById('swal-nama').value || !document.getElementById('swal-nominal').value) { Swal.showValidationMessage('Lengkapi data!'); return false; } } }).then((r) => { if (r.isConfirmed) simpanData(); });
+    Swal.fire({ width: '400px', title: `<h3 class="text-xl font-extrabold text-gray-800">Terima Pembayaran</h3>`, html: `<div class="text-left mt-2"><div class="mb-4"><label class="block text-[11px] font-bold mb-1 text-gray-500 uppercase">Kelas</label><select id="swal-kelas" onchange="updateDropdownSantri(this.value)" class="w-full border p-3 rounded-xl">${optK}</select></div><div class="mb-4"><label class="block text-[11px] font-bold mb-1 text-gray-500 uppercase">Santri</label><select id="swal-nama" class="w-full border p-3 rounded-xl bg-gray-100" disabled><option value="">Pilih kelas dulu...</option></select></div><div class="mb-4"><label class="block text-[11px] font-bold mb-1 text-gray-500 uppercase">Jenis Tagihan</label><select id="swal-jenis" class="w-full border p-3 rounded-xl">${optT}</select></div><div class="mb-2"><label class="block text-[11px] font-bold mb-1 text-gray-500 uppercase">Nominal</label><input id="swal-nominal" type="text" class="w-full border p-3 rounded-xl" oninput="formatRupiah(this)"></div></div>`, showCancelButton: true, confirmButtonText: 'Simpan', customClass: { popup: 'rounded-[32px]', confirmButton: 'bg-teal-600 text-white font-bold py-3 px-4 rounded-xl w-full' }, 
+    preConfirm: () => { 
+      const elNama = document.getElementById('swal-nama').value;
+      if (!document.getElementById('swal-kelas').value || !elNama || !document.getElementById('swal-nominal').value) { Swal.showValidationMessage('Lengkapi data!'); return false; } 
+      if (!elNama.includes('|')) { Swal.showValidationMessage('Santri tidak memiliki NIS. Harap perbaiki Master Data!'); return false; }
+    } }).then((r) => { if (r.isConfirmed) simpanData(); });
   }, 300);
 }
 
 function updateDropdownSantri(k) { 
   const sel = document.getElementById('swal-nama'); 
-  sel.innerHTML = '<option value="" disabled selected>-- Pilih Nama --</option>' + appData.santri.filter(s => s.kelas === k).sort((a,b)=>a.nama.localeCompare(b.nama)).map(s => `<option value="${s.nis}|${s.nama}">${s.nama}</option>`).join(''); 
+  sel.innerHTML = '<option value="" disabled selected>-- Pilih Nama --</option>' + appData.santri.filter(s => s.kelas === k).sort((a,b)=>a.nama.localeCompare(b.nama)).map(s => `<option value="${s.nis}|${s.nama}">${s.nama} (${s.nis})</option>`).join(''); 
   sel.disabled = false; sel.classList.remove('bg-gray-100'); 
 }
 
@@ -291,15 +299,40 @@ function bukaInputPengeluaran() {
     Swal.fire({ width: '400px', title: `<h3 class="text-xl font-extrabold text-gray-800">Catat Pengeluaran</h3>`, html: `<div class="text-left mt-2"><label class="block text-[11px] font-bold mb-1 text-gray-500 uppercase">Ambil dari Kas</label><select id="swal-kat" class="w-full border p-3 rounded-xl mb-4">${optT}</select><label class="block text-[11px] font-bold mb-1 text-gray-500 uppercase">Nominal</label><input id="swal-nom" type="text" class="w-full border p-3 rounded-xl mb-4" oninput="formatRupiah(this)"><label class="block text-[11px] font-bold mb-1 text-gray-500 uppercase">Keterangan</label><textarea id="swal-ket" class="w-full border p-3 rounded-xl"></textarea></div>`, showCancelButton: true, confirmButtonText: 'Simpan', customClass: { popup: 'rounded-[32px]', confirmButton: 'bg-red-500 text-white font-bold py-3 px-4 rounded-xl w-full' } }).then((r) => { if (r.isConfirmed) prosesSimpanPengeluaran(); });
   }, 300);
 }
-async function prosesSimpanPengeluaran() { Swal.fire({ title:'Mencatat...', didOpen:()=>Swal.showLoading()}); try { const res = await fetch(API_URL, {method:'POST', body:JSON.stringify({action:'simpan_pengeluaran', data:{kategori:document.getElementById('swal-kat').value, nominal:Number(document.getElementById('swal-nom').value.replace(/\./g, '')), keterangan:document.getElementById('swal-ket').value}})}); const result = await res.json(); if(result.success) { await muatUlangDataTanpaReload(); Swal.fire('Sukses', result.message, 'success'); } else Swal.fire('Gagal', result.message, 'error'); } catch (e) { Swal.fire('Error', 'Gagal', 'error'); } }
+
+async function prosesSimpanPengeluaran() { 
+  let inputKategori = document.getElementById('swal-kat').value;
+  let inputNominal = Number(document.getElementById('swal-nom').value.replace(/\./g, ''));
+  let inputKeterangan = document.getElementById('swal-ket').value;
+
+  if (!inputKategori || inputNominal <= 0) {
+    Swal.fire('Peringatan', 'Kategori dan nominal tidak boleh kosong!', 'warning');
+    return;
+  }
+
+  Swal.fire({ title:'Mencatat...', allowOutsideClick: false, didOpen:()=>Swal.showLoading()}); 
+  try { 
+    const res = await fetch(API_URL, {
+      method:'POST', 
+      body:JSON.stringify({
+        action:'simpan_pengeluaran', 
+        data: { kategori: inputKategori, nominal: inputNominal, keterangan: inputKeterangan }
+      })
+    }); 
+    const result = await res.json(); 
+    if(result.success) { await muatUlangDataTanpaReload(); Swal.fire('Sukses', result.message, 'success'); } 
+    else { Swal.fire('Gagal', result.message, 'error'); }
+  } catch (e) { Swal.fire('Error', 'Data gagal terkirim.', 'error'); } 
+}
 
 // ==========================================
-// LAPORAN DINAMIS
+// LAPORAN DINAMIS & DOWNLOAD PDF LENGKAP KOP
 // ==========================================
 function renderLaporan(tabAktif = null, isBack = false) {
   if (!isBack) history.pushState({ page: 'laporan' }, "", "#laporan"); updateNav(2); 
   if (!appData || appData.setting.length === 0) return;
   if (!tabAktif) tabAktif = appData.setting[0].jenis;
+  window.laporanTabAktif = tabAktif;
 
   const dBayar = appData.pembayaran.filter(d => d.jenis === tabAktif);
   let targetTotal = 0;
@@ -322,13 +355,137 @@ function renderLaporan(tabAktif = null, isBack = false) {
       <div class="bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-[32px] p-7 shadow-xl shadow-emerald-200 mb-8 relative overflow-hidden"><div class="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-full blur-2xl -mr-10 -mt-10"></div><div class="relative z-10"><p class="text-emerald-100 text-[11px] font-medium uppercase tracking-widest mb-1">Sisa Kekurangan</p><h2 class="text-3xl font-extrabold text-white mb-6">Rp ${sisa.toLocaleString('id-ID')}</h2><div class="mb-6"><div class="flex justify-between text-[11px] text-emerald-100 mb-2 font-medium"><span>Progress Pembayaran</span><span class="font-bold text-white">${persen}%</span></div><div class="w-full bg-emerald-900/40 rounded-full h-2.5"><div class="bg-white h-2.5 rounded-full transition-all duration-1000 shadow-sm" style="width: ${persen}%"></div></div></div></div></div>
       <div class="bg-white p-5 rounded-[24px] shadow-sm border border-gray-100 mb-8"><h3 class="text-[11px] font-bold text-gray-500 mb-4 uppercase tracking-wider flex items-center gap-2"><i class="fas fa-chart-pie text-emerald-500 text-sm"></i> Statistik Pembayaran</h3><div class="relative h-48 w-full flex justify-center"><canvas id="laporanChart"></canvas></div></div>
       <div>
-        <h3 class="text-[11px] font-bold text-gray-500 mb-4 uppercase tracking-wider flex items-center gap-2"><i class="fas fa-history text-emerald-500 text-sm"></i> Riwayat Terbaru (${tabAktif})</h3>
+        <div class="flex justify-between items-end mb-4">
+            <h3 class="text-[11px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-2"><i class="fas fa-history text-emerald-500 text-sm"></i> Riwayat Terbaru (${tabAktif})</h3>
+            <button onclick="downloadLaporan()" class="bg-red-50 text-red-600 px-3 py-1.5 rounded-lg text-[10px] font-bold border border-red-200 hover:bg-red-100 transition-colors shadow-sm flex items-center gap-1"><i class="fas fa-file-pdf"></i> Download PDF</button>
+        </div>
         ${dBayar.length === 0 ? '<div class="text-center py-10 text-xs text-gray-400">Belum ada transaksi.</div>' : ''}
         <div class="flex flex-col gap-3">${dBayar.map((t, i) => `<div class="bg-white p-4 rounded-[20px] shadow-sm border border-gray-100 flex justify-between items-center overflow-hidden"><div class="flex items-center gap-3.5 flex-1"><div class="w-10 h-10 min-w-[40px] rounded-full bg-emerald-50 text-emerald-600 border-emerald-100 flex items-center justify-center font-bold text-sm border">${i + 1}</div><div class="flex-1 pr-2"><h4 class="font-bold text-sm text-gray-800 break-words leading-tight">${t.nama}</h4><p class="text-[10px] text-gray-400 mt-0.5">${t.kelas} • ${new Date(t.tanggal).toLocaleDateString('id-ID')}</p></div></div><div class="text-right flex-shrink-0 ml-3"><p class="text-sm font-bold text-emerald-600">+ Rp ${t.nominal.toLocaleString('id-ID')}</p></div></div>`).join('')}</div>
       </div>
     </div>`;
   if (window.myChart instanceof Chart) window.myChart.destroy();
   window.myChart = new Chart(document.getElementById('laporanChart'), { type: 'doughnut', data: { labels: ['Dana Masuk', 'Kekurangan Target'], datasets: [{ data: [msk, sisa === 0 && msk === 0 ? 1 : sisa], backgroundColor: ['#10b981', '#f3f4f6'], borderWidth: 0, hoverOffset: 5 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20, font: { size: 11 }, color: '#6b7280' } } } } });
+}
+
+// LOGIKA CETAK PDF + KOP SURAT LOGO + SMART NIS LOOKUP
+function downloadLaporan() {
+  if (!appData || !window.laporanTabAktif) return;
+  const tabAktif = window.laporanTabAktif;
+  const dBayar = appData.pembayaran.filter(d => d.jenis === tabAktif);
+  
+  let kas = appData.rekapKas[tabAktif] || { masuk: 0, keluar: 0 };
+  if (dBayar.length === 0 && kas.keluar === 0) { 
+    Swal.fire('Info', 'Belum ada transaksi untuk di-download.', 'info'); 
+    return; 
+  }
+
+  Swal.fire({ title: 'Membuat PDF...', allowOutsideClick: false, didOpen: () => { Swal.showLoading() } });
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF('p', 'mm', 'legal');
+
+  const img = new Image();
+  img.crossOrigin = "Anonymous";
+  img.src = 'https://semoljeh.github.io/tahun/logo.png'; 
+  
+  img.onload = function() {
+    
+    // KOP SURAT YANG LEBIH RAPI & ELEGAN
+    doc.addImage(img, 'PNG', 15, 10, 22, 22); 
+    
+    // Nama Instansi (Paling Atas, Besar)
+    doc.setFontSize(14); 
+    doc.setFont("helvetica", "bold");
+    doc.text("BIRO KEUANGAN MADASA", 112, 16, { align: "center" });
+    
+    // Judul Dokumen (Tengah)
+    doc.setFontSize(12);
+    doc.text("LAPORAN REKAPITULASI PEMBAYARAN SANTRI", 112, 22, { align: "center" });
+    
+    // Keterangan Tagihan (Bawah, Normal)
+    doc.setFontSize(10); 
+    doc.setFont("helvetica", "normal");
+    doc.text(`JENIS TAGIHAN: ${tabAktif.toUpperCase()}`, 112, 28, { align: "center" });
+    
+    // Garis Ganda Kop Surat (Tebal & Tipis)
+    doc.setLineWidth(0.8); 
+    doc.line(14, 33, 202, 33);
+    doc.setLineWidth(0.2); 
+    doc.line(14, 34.5, 202, 34.5);
+    
+    // Waktu Cetak
+    doc.setFontSize(9); 
+    doc.text(`Dicetak pada: ${new Date().toLocaleString('id-ID')}`, 14, 41);
+
+    // TABEL PEMASUKAN
+    const tableColumn = ["No", "Tanggal", "NIS", "Nama Santri", "Kelas", "Nominal (Rp)"];
+    let totalPemasukanTabel = 0;
+    let totalKeluar = kas.keluar;
+    
+    const tableRows = dBayar.map((t, i) => {
+      totalPemasukanTabel += t.nominal;
+      let nisAktif = t.nis;
+      if (!nisAktif || nisAktif === "" || nisAktif === "-") {
+         let cariSantri = appData.santri.find(s => s.nama === t.nama && s.kelas === t.kelas);
+         if (cariSantri) nisAktif = cariSantri.nis;
+      }
+      return [ i + 1, new Date(t.tanggal).toLocaleDateString('id-ID'), nisAktif || "-", t.nama, t.kelas, t.nominal.toLocaleString('id-ID') ];
+    });
+
+    let sisaSaldo = totalPemasukanTabel - totalKeluar;
+
+    // MENYATUKAN RINGKASAN KE DALAM BARIS TABEL PALING BAWAH
+    tableRows.push([
+      { content: 'TOTAL PEMASUKAN', colSpan: 5, styles: { halign: 'right', fontStyle: 'bold' } }, 
+      { content: totalPemasukanTabel.toLocaleString('id-ID'), styles: { fontStyle: 'bold' } }
+    ]);
+    tableRows.push([
+      { content: 'TOTAL PENGELUARAN', colSpan: 5, styles: { halign: 'right', fontStyle: 'bold' } }, 
+      { content: totalKeluar.toLocaleString('id-ID'), styles: { fontStyle: 'bold' } }
+    ]);
+    tableRows.push([
+      { content: 'SISA SALDO (KAS)', colSpan: 5, styles: { halign: 'right', fontStyle: 'bold', fillColor: [230, 244, 241] } }, 
+      { content: sisaSaldo.toLocaleString('id-ID'), styles: { fontStyle: 'bold', fillColor: [230, 244, 241] } }
+    ]);
+
+    doc.autoTable({
+      head: [tableColumn], 
+      body: tableRows, 
+      startY: 45, 
+      theme: 'grid',
+      headStyles: { fillColor: [15, 118, 110], halign: 'center', valign: 'middle', fontStyle: 'bold' }, 
+      styles: { fontSize: 9, cellPadding: 3, valign: 'middle' },
+      columnStyles: { 
+        0: { halign: 'center', cellWidth: 12 },
+        1: { halign: 'center', cellWidth: 28 }, 
+        2: { halign: 'center', cellWidth: 25 }, 
+        4: { halign: 'center', cellWidth: 35 }, 
+        5: { halign: 'right', cellWidth: 32 } 
+      }
+    });
+
+    // TANDA TANGAN BENDAHARA
+    let finalY = doc.lastAutoTable.finalY || 45;
+    finalY += 15;
+
+    if (finalY > 300) { doc.addPage(); finalY = 20; }
+    
+    const today = new Date();
+    const namaBulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+    const tanggalFormat = `${today.getDate()} ${namaBulan[today.getMonth()]} ${today.getFullYear()}`;
+    
+    doc.setFontSize(11);
+    doc.text(`Bangkalan, ${tanggalFormat}`, 160, finalY, { align: "center" });
+    doc.text("Bendahara", 160, finalY + 5, { align: "center" });
+    doc.text("( .......................................... )", 160, finalY + 25, { align: "center" });
+
+    doc.save(`Laporan_Kas_${tabAktif}_${today.getTime()}.pdf`);
+    Swal.close();
+  };
+
+  img.onerror = function() {
+    Swal.fire('Error', 'Gagal memuat logo untuk PDF. Pastikan koneksi internet stabil.', 'error');
+  };
 }
 
 // ==========================================
@@ -394,20 +551,32 @@ async function simpanSettingBiaya() {
 }
 
 // ==========================================
-// IMPORT EXCEL DLL
+// IMPORT EXCEL DLL & DOWNLOAD TEMPLATE
 // ==========================================
+function downloadTemplate() {
+  const templateData = [
+    { "NIS": "84260001", "Nama Lengkap": "MOH RIZIEQ", "JK": "L", "TTL": "Bangkalan, 11 Oktober 2010", "Kelas": "SANA - Kelas 2", "Alamat": "Telentean Dsn Longkak", "Ayah": "Masudi", "Ibu": "Maryatun", "HP": "081330206609" },
+    { "NIS": "84260002", "Nama Lengkap": "SITI MARYAM", "JK": "P", "TTL": "Surabaya, 1 Januari 2012", "Kelas": "IBT - Kelas VI", "Alamat": "Jl. Contoh No 123", "Ayah": "Budi", "Ibu": "Siti", "HP": "081234567890" }
+  ];
+  const worksheet = XLSX.utils.json_to_sheet(templateData);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Data Santri");
+  XLSX.writeFile(workbook, "Template_Data_Santri.xlsx");
+}
+
 function bukaFormImport() {
   Swal.fire({
     title: '<h3 class="text-xl font-extrabold text-gray-800 mt-2">Import Master Data</h3>',
     html: `
       <div class="text-left mt-2 text-sm">
-        <div class="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl border border-emerald-100 shadow-sm">
-          <i class="fas fa-file-excel"></i>
-        </div>
-        <p class="text-xs text-gray-500 mb-4 text-center leading-relaxed">
+        <div class="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl border border-emerald-100 shadow-sm"><i class="fas fa-file-excel"></i></div>
+        <p class="text-xs text-gray-500 mb-3 text-center leading-relaxed">
           Sistem kini mendukung sinkronisasi <b>semua kolom</b> dari Excel Anda:<br>
           <span class="font-bold text-gray-700 bg-gray-100 px-2 py-1.5 rounded-md mt-2 inline-block shadow-inner border border-gray-200 text-[10px]">NIS, Nama, JK, TTL, Kelas, Alamat, Ayah, Ibu, HP</span>
         </p>
+        <div class="flex justify-center mb-4">
+           <button onclick="downloadTemplate()" class="text-[10px] bg-blue-50 text-blue-600 border border-blue-200 px-3 py-1.5 rounded-xl font-bold hover:bg-blue-100 transition-colors flex items-center gap-1 shadow-sm"><i class="fas fa-download"></i> Download Template Excel</button>
+        </div>
         <div class="relative group">
           <input type="file" id="fileImport" accept=".xlsx, .xls, .csv" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer border border-gray-200 rounded-xl bg-gray-50 p-1.5 outline-none transition-all shadow-inner">
         </div>

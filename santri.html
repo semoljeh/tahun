@@ -99,7 +99,7 @@
 
 <script>
 // GANTI DENGAN URL WEB APP BARU ANDA
-const API_URL = 'https://script.google.com/macros/s/AKfycbx_LLw83GVcei5nM_L4tdDFX7OECth4mq2ABlfndCSvNloBQ422uPrprjvxCnqTF9e4Kw/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbwapA5PE31lDsFqeLnzbJDsEq6IkLpVQrxbk8Ig8D-c0aXAgu-I-rbLAcO0gsbpFNhGqg/exec';
 
 let appData = null; 
 let tabAktif = null;
@@ -113,7 +113,7 @@ window.onload = async () => {
     
     let unikKelas = [...new Set(appData.santri.map(s => s.kelas).filter(k => k))].sort();
     unikKelas.forEach(k => {
-      document.getElementById('filterKelas').insertAdjacentHTML('beforeend', `<option value="${k}">Kelas ${k}</option>`);
+      document.getElementById('filterKelas').insertAdjacentHTML('beforeend', `<option value="${k}">${k}</option>`);
     });
     renderData();
   } catch (e) { document.getElementById('loading').innerHTML = '<p class="text-red-500 font-bold mt-4">Gagal memuat data dari server.</p>'; }
@@ -135,27 +135,43 @@ function renderData(jenis = null) {
   let santriFilter = k === 'semua' ? appData.santri : appData.santri.filter(s => s.kelas === k);
   let setAktif = settingBiaya.find(s => s.jenis === tabAktif);
 
+  // KUMPULKAN TOTAL PEMBAYARAN DENGAN PENCARIAN GANDA (NIS ATAU NAMA+KELAS)
   let totalBayarPerSantri = {};
   (appData.pembayaran || []).forEach(p => {
     if (p.jenis === tabAktif) {
-      let key = (p.nis && p.nis !== "") ? p.nis : (p.nama + "_" + p.kelas);
+      let key = "";
+      if (p.nis && p.nis !== "") {
+        key = p.nis.toString().trim();
+      } else {
+        key = (p.nama ? p.nama.toString().trim().toLowerCase() : "") + "_" + (p.kelas ? p.kelas.toString().trim().toLowerCase() : "");
+      }
       totalBayarPerSantri[key] = (totalBayarPerSantri[key] || 0) + p.nominal;
     }
   });
 
   let dataS = santriFilter.map(s => {
     let t = 0; let kl = s.kelas.toUpperCase();
-    if (kl.includes('TK')) t = setAktif.TK; else if (kl.includes('IBT')) t = setAktif.IBT; else if (kl.includes('SANA')) t = setAktif.SANA;
+    
+    if (kl.includes('TK')) t = setAktif.TK; 
+    else if (kl.includes('IBT')) t = setAktif.IBT; 
+    else if (kl.includes('SANA')) t = setAktif.SANA;
+    else t = setAktif.IBT || setAktif.TK || 0;
 
-    let key = (s.nis && s.nis !== "") ? s.nis : (s.nama + "_" + s.kelas);
-    let byr = totalBayarPerSantri[key] || 0;
+    let keyNis = s.nis ? s.nis.toString().trim() : "";
+    let keyNamaKelas = (s.nama ? s.nama.toString().trim().toLowerCase() : "") + "_" + (s.kelas ? s.kelas.toString().trim().toLowerCase() : "");
+    
+    let byr = totalBayarPerSantri[keyNis] || totalBayarPerSantri[keyNamaKelas] || 0;
     let sisa = Math.max(0, t - byr); 
     
     let st = 'Belum';
-    if (t > 0) { if (byr >= t) st = 'Selesai'; else if (byr > 0) st = 'Nyicil'; } 
-    else { if (byr > 0) st = 'Selesai'; }
+    if (t > 0) { 
+      if (byr >= t) st = 'Selesai'; 
+      else if (byr > 0) st = 'Nyicil'; 
+    } else { 
+      if (byr > 0) st = 'Selesai'; 
+    }
     
-    return { ...s, sisa, st, t };
+    return { ...s, sisa, st, t, byr };
   }).sort((a,b) => {
     const order = { 'Belum': 1, 'Nyicil': 2, 'Selesai': 3 };
     return order[a.st] - order[b.st];

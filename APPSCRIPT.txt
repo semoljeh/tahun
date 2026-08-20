@@ -6,6 +6,15 @@ function pastikanSheetAda(namaSheet, header, ss) {
       sheet.appendRow(header);
       sheet.getRange(1, 1, 1, header.length).setFontWeight("bold");
     }
+  } else {
+    // LOGIKA PERBAIKAN OTOMATIS: Jika sheet sudah ada tapi kolom NIS (kolom ke-6) belum ada, tambahkan otomatis!
+    if (header && header.length > 0) {
+      let lastCol = sheet.getLastColumn() || 1;
+      if (lastCol < header.length) {
+        sheet.getRange(1, 1, 1, header.length).setValues([header]);
+        sheet.getRange(1, 1, 1, header.length).setFontWeight("bold");
+      }
+    }
   }
   return sheet;
 }
@@ -43,6 +52,7 @@ function doGet(e) {
           if (bayarRows[i][1]) {
             let j = bayarRows[i][3].toString().trim();
             let n = Number(bayarRows[i][4]) || 0;
+            // Ambil NIS dari kolom F (Index 5)
             let nisData = bayarRows[i][5] ? bayarRows[i][5].toString().trim() : "";
             pembayaranList.push({ row: i + 1, tanggal: bayarRows[i][0], nama: bayarRows[i][1].toString().trim(), kelas: bayarRows[i][2].toString().trim(), jenis: j, nominal: n, nis: nisData });
             if (!rekapKas[j]) rekapKas[j] = { masuk: 0, keluar: 0 };
@@ -82,6 +92,7 @@ function doPost(e) {
       request.data.forEach(item => {
         if(item.jenis && item.jenis.trim() !== '') {
           rows.push([item.jenis, item.TK || 0, item.IBT || 0, item.SANA || 0]);
+          // SELALU MEMASTIKAN ADA 6 KOLOM TERMASUK NIS
           pastikanSheetAda("Pembayaran - " + item.jenis, ["Tanggal", "Nama Santri", "Kelas", "Jenis Pembayaran", "Nominal", "NIS"], ss);
         }
       });
@@ -105,16 +116,21 @@ function doPost(e) {
 
     if (request.action === 'simpan_pembayaran') {
       let settingBiaya = ss.getSheetByName("Pengaturan").getDataRange().getValues().slice(1).map(r => ({ jenis: r[0].toString().trim(), TK: Number(r[1])||0, IBT: Number(r[2])||0, SANA: Number(r[3])||0 }));
+      
       let [nisInput, namaInput, jenisInput, kelasInput, nominalInput] = [(request.data.nis || "").toString().trim(), request.data.nama.trim(), request.data.jenis.trim(), request.data.kelas.trim(), Number(request.data.nominal)||0];
       
+      // Validasi Ekstra dari Server
+      if (nisInput === "") return ContentService.createTextOutput(JSON.stringify({ success: false, message: `GAGAL: Data santri tidak memiliki NIS valid.` })).setMimeType(ContentService.MimeType.JSON);
+
       let sheetPembayaran = pastikanSheetAda("Pembayaran - " + jenisInput, ["Tanggal", "Nama Santri", "Kelas", "Jenis Pembayaran", "Nominal", "NIS"], ss);
       let target = 0, set = settingBiaya.find(s => s.jenis.toLowerCase() === jenisInput.toLowerCase());
       if (set) { let k = kelasInput.toUpperCase(); target = k.includes("TK") ? set.TK : (k.includes("IBT") ? set.IBT : (k.includes("SANA") ? set.SANA : 0)); }
       
+      // Murni mencocokkan total lunas berdasarkan NIS
       let totalTerbayar = sheetPembayaran.getDataRange().getValues().slice(1).reduce((sum, r) => {
           let isMatch = false;
-          if (nisInput !== "" && r[5]) isMatch = (r[5].toString().trim() === nisInput);
-          else isMatch = (r[1] == namaInput && r[2] == kelasInput); 
+          if (r[5]) isMatch = (r[5].toString().trim() === nisInput); 
+          else isMatch = (r[1] == namaInput && r[2] == kelasInput); // Fallback data sangat lama
           return (isMatch && r[3] == jenisInput) ? sum + (Number(r[4])||0) : sum;
       }, 0);
 
