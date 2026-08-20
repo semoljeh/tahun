@@ -1,9 +1,12 @@
 // GANTI DENGAN URL WEB APP GAS ANDA YANG BARU SETELAH DEPLOY!
-const API_URL = 'https://script.google.com/macros/s/AKfycbwapA5PE31lDsFqeLnzbJDsEq6IkLpVQrxbk8Ig8D-c0aXAgu-I-rbLAcO0gsbpFNhGqg/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbwnrj0VPxQ1qEOin74u21AH8RhJMbmW1BwDHh1P8gZ68iG3okmYVr6Ssyr7qFXEkSSWYA/exec';
 let appData = null;
 let dataSettingLokal = [];
 const PIN_SISTEM = "112233"; 
+
+// Variabel Global untuk mengingat filter laporan
 window.laporanTabAktif = null;
+window.laporanKelasAktif = 'Semua';
 
 // ==========================================
 // SINKRONISASI TOMBOL KEMBALI & ROUTING CERDAS
@@ -12,7 +15,7 @@ window.addEventListener('popstate', (e) => {
   if (document.body.classList.contains('swal2-shown')) { Swal.close(); return; }
   const hash = location.hash;
   if (hash === '#santri') renderPembayaran(filterTingkat, true);
-  else if (hash === '#laporan') renderLaporan(null, true);
+  else if (hash === '#laporan') renderLaporan(window.laporanTabAktif, window.laporanKelasAktif, true);
   else if (hash === '#pengaturan') renderSetting(true);
   else renderDashboard(true);
 });
@@ -69,7 +72,7 @@ async function tampilkanAplikasiUtama() {
     
     const hash = location.hash;
     if (hash === '#santri') renderPembayaran(filterTingkat, true);
-    else if (hash === '#laporan') renderLaporan(null, true);
+    else if (hash === '#laporan') renderLaporan(window.laporanTabAktif, window.laporanKelasAktif, true);
     else if (hash === '#pengaturan') renderSetting(true);
     else renderDashboard(true);
   } catch (error) { Swal.fire('Error', 'Gagal memuat data dari server.', 'error'); }
@@ -81,7 +84,7 @@ async function muatUlangDataTanpaReload() {
   dataSettingLokal = JSON.parse(JSON.stringify(appData.setting));
   const hash = location.hash; 
   if (hash === '#santri') renderPembayaran(filterTingkat, true); 
-  else if (hash === '#laporan') renderLaporan(null, true); 
+  else if (hash === '#laporan') renderLaporan(window.laporanTabAktif, window.laporanKelasAktif, true); 
   else if (hash === '#pengaturan') renderSetting(true);
   else renderDashboard(true); 
 }
@@ -198,7 +201,6 @@ function bukaFormPembayaran(nis = '', nama = '', kelas = '') {
 async function simpanData() {
   let nisKirim = "";
   let namaKirim = "";
-  
   let elNama = document.getElementById('swal-nama');
   let elNis = document.getElementById('swal-nis');
   
@@ -244,7 +246,6 @@ function lihatRiwayat(nisSantri, namaSantri, kelasSantri, event) {
     let target = k.includes('TK') ? set.TK : (k.includes('IBT') ? set.IBT : (k.includes('SANA') ? set.SANA : 0));
     let total = riwayatSantri.filter(r => r.jenis === set.jenis).reduce((sum, r) => sum + r.nominal, 0);
     let sisa = target - total;
-    
     let isSelesai = (target > 0 && sisa <= 0) || (target === 0 && total > 0);
     let textStatus = isSelesai ? '<i class="fas fa-check-circle mr-1"></i> SELESAI' : 'Sisa Rp ' + Math.max(0, sisa).toLocaleString('id-ID');
     let colorStatus = isSelesai ? 'text-blue-600 bg-blue-50 px-2 py-1 rounded-lg border border-blue-100' : 'text-red-500';
@@ -326,17 +327,32 @@ async function prosesSimpanPengeluaran() {
 }
 
 // ==========================================
-// LAPORAN DINAMIS & DOWNLOAD PDF LENGKAP KOP
+// LAPORAN DINAMIS & DOWNLOAD PDF 
 // ==========================================
-function renderLaporan(tabAktif = null, isBack = false) {
+function renderLaporan(tabAktif = null, kelasAktif = null, isBack = false) {
   if (!isBack) history.pushState({ page: 'laporan' }, "", "#laporan"); updateNav(2); 
   if (!appData || appData.setting.length === 0) return;
-  if (!tabAktif) tabAktif = appData.setting[0].jenis;
+  
+  if (!tabAktif) tabAktif = window.laporanTabAktif || appData.setting[0].jenis;
+  if (!kelasAktif) kelasAktif = window.laporanKelasAktif || 'Semua';
+  
   window.laporanTabAktif = tabAktif;
+  window.laporanKelasAktif = kelasAktif;
 
-  const dBayar = appData.pembayaran.filter(d => d.jenis === tabAktif);
+  // Filter Data Transaksi berdasarkan Tagihan & Kelas
+  let dBayar = appData.pembayaran.filter(d => d.jenis === tabAktif);
+  if (kelasAktif !== 'Semua') {
+      dBayar = dBayar.filter(d => d.kelas === kelasAktif);
+  }
+
+  // Menghitung Target Berdasarkan Filter Kelas
   let targetTotal = 0;
-  appData.santri.forEach(s => {
+  let santriFilter = appData.santri;
+  if (kelasAktif !== 'Semua') {
+      santriFilter = santriFilter.filter(s => s.kelas === kelasAktif);
+  }
+
+  santriFilter.forEach(s => {
     let k = s.kelas.toUpperCase(); let set = appData.setting.find(x => x.jenis === tabAktif);
     if(set) targetTotal += k.includes('TK') ? set.TK : (k.includes('IBT') ? set.IBT : (k.includes('SANA') ? set.SANA : 0));
   });
@@ -344,22 +360,35 @@ function renderLaporan(tabAktif = null, isBack = false) {
   const msk = dBayar.reduce((s, i) => s + i.nominal, 0); const sisa = Math.max(0, targetTotal - msk);
   const persen = targetTotal === 0 ? 0 : Math.round((msk / targetTotal) * 100);
 
-  let dropdownHTML = appData.setting.map(s => `<option value="${s.jenis}" ${tabAktif === s.jenis ? 'selected' : ''}>📋 Laporan Kas: ${s.jenis}</option>`).join('');
+  // Buat Opsi Dropdown
+  const uniqueClasses = [...new Set(appData.santri.map(s => s.kelas).filter(k => k))].sort();
+  
+  let dropdownTagihanHTML = appData.setting.map(s => `<option value="${s.jenis}" ${tabAktif === s.jenis ? 'selected' : ''}>📋 Tagihan: ${s.jenis}</option>`).join('');
+  let dropdownKelasHTML = `<option value="Semua" ${kelasAktif === 'Semua' ? 'selected' : ''}>🌍 Semua Kelas</option>` + uniqueClasses.map(c => `<option value="${c}" ${kelasAktif === c ? 'selected' : ''}>🏫 Kelas ${c}</option>`).join('');
 
   document.getElementById('app-content').innerHTML = `
     <div class="max-w-2xl mx-auto pb-12 pt-4 px-7">
-      <div class="relative mb-6">
-        <select onchange="renderLaporan(this.value)" class="w-full bg-white border border-gray-100 shadow-sm rounded-2xl px-4 py-3.5 text-sm font-bold text-emerald-700 outline-none focus:border-emerald-500 cursor-pointer appearance-none transition-all">${dropdownHTML}</select>
-        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-emerald-500"><i class="fas fa-chevron-down"></i></div>
+      
+      <!-- DUA DROPDOWN FILTER BERSAMPINGAN -->
+      <div class="grid grid-cols-2 gap-3 mb-6">
+        <div class="relative">
+          <select onchange="renderLaporan(this.value, window.laporanKelasAktif)" class="w-full bg-white border border-gray-100 shadow-sm rounded-2xl px-4 py-3.5 text-xs font-bold text-emerald-700 outline-none focus:border-emerald-500 cursor-pointer appearance-none transition-all">${dropdownTagihanHTML}</select>
+          <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-emerald-500"><i class="fas fa-chevron-down"></i></div>
+        </div>
+        <div class="relative">
+          <select onchange="renderLaporan(window.laporanTabAktif, this.value)" class="w-full bg-white border border-gray-100 shadow-sm rounded-2xl px-4 py-3.5 text-xs font-bold text-gray-700 outline-none focus:border-emerald-500 cursor-pointer appearance-none transition-all">${dropdownKelasHTML}</select>
+          <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-400"><i class="fas fa-chevron-down"></i></div>
+        </div>
       </div>
+
       <div class="bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-[32px] p-7 shadow-xl shadow-emerald-200 mb-8 relative overflow-hidden"><div class="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-full blur-2xl -mr-10 -mt-10"></div><div class="relative z-10"><p class="text-emerald-100 text-[11px] font-medium uppercase tracking-widest mb-1">Sisa Kekurangan</p><h2 class="text-3xl font-extrabold text-white mb-6">Rp ${sisa.toLocaleString('id-ID')}</h2><div class="mb-6"><div class="flex justify-between text-[11px] text-emerald-100 mb-2 font-medium"><span>Progress Pembayaran</span><span class="font-bold text-white">${persen}%</span></div><div class="w-full bg-emerald-900/40 rounded-full h-2.5"><div class="bg-white h-2.5 rounded-full transition-all duration-1000 shadow-sm" style="width: ${persen}%"></div></div></div></div></div>
       <div class="bg-white p-5 rounded-[24px] shadow-sm border border-gray-100 mb-8"><h3 class="text-[11px] font-bold text-gray-500 mb-4 uppercase tracking-wider flex items-center gap-2"><i class="fas fa-chart-pie text-emerald-500 text-sm"></i> Statistik Pembayaran</h3><div class="relative h-48 w-full flex justify-center"><canvas id="laporanChart"></canvas></div></div>
       <div>
         <div class="flex justify-between items-end mb-4">
-            <h3 class="text-[11px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-2"><i class="fas fa-history text-emerald-500 text-sm"></i> Riwayat Terbaru (${tabAktif})</h3>
+            <h3 class="text-[11px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-2"><i class="fas fa-history text-emerald-500 text-sm"></i> Riwayat Terbaru</h3>
             <button onclick="downloadLaporan()" class="bg-red-50 text-red-600 px-3 py-1.5 rounded-lg text-[10px] font-bold border border-red-200 hover:bg-red-100 transition-colors shadow-sm flex items-center gap-1"><i class="fas fa-file-pdf"></i> Download PDF</button>
         </div>
-        ${dBayar.length === 0 ? '<div class="text-center py-10 text-xs text-gray-400">Belum ada transaksi.</div>' : ''}
+        ${dBayar.length === 0 ? '<div class="text-center py-10 text-xs text-gray-400">Belum ada transaksi di kelas ini.</div>' : ''}
         <div class="flex flex-col gap-3">${dBayar.map((t, i) => `<div class="bg-white p-4 rounded-[20px] shadow-sm border border-gray-100 flex justify-between items-center overflow-hidden"><div class="flex items-center gap-3.5 flex-1"><div class="w-10 h-10 min-w-[40px] rounded-full bg-emerald-50 text-emerald-600 border-emerald-100 flex items-center justify-center font-bold text-sm border">${i + 1}</div><div class="flex-1 pr-2"><h4 class="font-bold text-sm text-gray-800 break-words leading-tight">${t.nama}</h4><p class="text-[10px] text-gray-400 mt-0.5">${t.kelas} • ${new Date(t.tanggal).toLocaleDateString('id-ID')}</p></div></div><div class="text-right flex-shrink-0 ml-3"><p class="text-sm font-bold text-emerald-600">+ Rp ${t.nominal.toLocaleString('id-ID')}</p></div></div>`).join('')}</div>
       </div>
     </div>`;
@@ -367,14 +396,19 @@ function renderLaporan(tabAktif = null, isBack = false) {
   window.myChart = new Chart(document.getElementById('laporanChart'), { type: 'doughnut', data: { labels: ['Dana Masuk', 'Kekurangan Target'], datasets: [{ data: [msk, sisa === 0 && msk === 0 ? 1 : sisa], backgroundColor: ['#10b981', '#f3f4f6'], borderWidth: 0, hoverOffset: 5 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20, font: { size: 11 }, color: '#6b7280' } } } } });
 }
 
-// LOGIKA CETAK PDF + KOP SURAT LOGO + SMART NIS LOOKUP
+// LOGIKA CETAK PDF + SUMMARY KAS TERINTEGRASI + FILTER KELAS
 function downloadLaporan() {
   if (!appData || !window.laporanTabAktif) return;
   const tabAktif = window.laporanTabAktif;
-  const dBayar = appData.pembayaran.filter(d => d.jenis === tabAktif);
+  const kelasAktif = window.laporanKelasAktif || 'Semua';
+  
+  let dBayar = appData.pembayaran.filter(d => d.jenis === tabAktif);
+  if (kelasAktif !== 'Semua') {
+      dBayar = dBayar.filter(d => d.kelas === kelasAktif);
+  }
   
   let kas = appData.rekapKas[tabAktif] || { masuk: 0, keluar: 0 };
-  if (dBayar.length === 0 && kas.keluar === 0) { 
+  if (dBayar.length === 0) { 
     Swal.fire('Info', 'Belum ada transaksi untuk di-download.', 'info'); 
     return; 
   }
@@ -390,37 +424,35 @@ function downloadLaporan() {
   
   img.onload = function() {
     
-    // KOP SURAT YANG LEBIH RAPI & ELEGAN
+    // KOP SURAT
     doc.addImage(img, 'PNG', 15, 10, 22, 22); 
-    
-    // Nama Instansi (Paling Atas, Besar)
     doc.setFontSize(14); 
     doc.setFont("helvetica", "bold");
     doc.text("BIRO KEUANGAN MADASA", 112, 16, { align: "center" });
-    
-    // Judul Dokumen (Tengah)
     doc.setFontSize(12);
     doc.text("LAPORAN REKAPITULASI PEMBAYARAN SANTRI", 112, 22, { align: "center" });
     
-    // Keterangan Tagihan (Bawah, Normal)
+    // Keterangan Tagihan menyesuaikan Filter Kelas
     doc.setFontSize(10); 
     doc.setFont("helvetica", "normal");
-    doc.text(`JENIS TAGIHAN: ${tabAktif.toUpperCase()}`, 112, 28, { align: "center" });
+    if (kelasAktif === 'Semua') {
+        doc.text(`JENIS TAGIHAN: ${tabAktif.toUpperCase()}`, 112, 28, { align: "center" });
+    } else {
+        doc.text(`TAGIHAN: ${tabAktif.toUpperCase()} | KELAS: ${kelasAktif.toUpperCase()}`, 112, 28, { align: "center" });
+    }
     
-    // Garis Ganda Kop Surat (Tebal & Tipis)
+    // Garis Ganda Kop Surat
     doc.setLineWidth(0.8); 
     doc.line(14, 33, 202, 33);
     doc.setLineWidth(0.2); 
     doc.line(14, 34.5, 202, 34.5);
     
-    // Waktu Cetak
     doc.setFontSize(9); 
     doc.text(`Dicetak pada: ${new Date().toLocaleString('id-ID')}`, 14, 41);
 
-    // TABEL PEMASUKAN
+    // TABEL TRANSAKSI
     const tableColumn = ["No", "Tanggal", "NIS", "Nama Santri", "Kelas", "Nominal (Rp)"];
     let totalPemasukanTabel = 0;
-    let totalKeluar = kas.keluar;
     
     const tableRows = dBayar.map((t, i) => {
       totalPemasukanTabel += t.nominal;
@@ -432,21 +464,25 @@ function downloadLaporan() {
       return [ i + 1, new Date(t.tanggal).toLocaleDateString('id-ID'), nisAktif || "-", t.nama, t.kelas, t.nominal.toLocaleString('id-ID') ];
     });
 
-    let sisaSaldo = totalPemasukanTabel - totalKeluar;
-
     // MENYATUKAN RINGKASAN KE DALAM BARIS TABEL PALING BAWAH
     tableRows.push([
       { content: 'TOTAL PEMASUKAN', colSpan: 5, styles: { halign: 'right', fontStyle: 'bold' } }, 
       { content: totalPemasukanTabel.toLocaleString('id-ID'), styles: { fontStyle: 'bold' } }
     ]);
-    tableRows.push([
-      { content: 'TOTAL PENGELUARAN', colSpan: 5, styles: { halign: 'right', fontStyle: 'bold' } }, 
-      { content: totalKeluar.toLocaleString('id-ID'), styles: { fontStyle: 'bold' } }
-    ]);
-    tableRows.push([
-      { content: 'SISA SALDO (KAS)', colSpan: 5, styles: { halign: 'right', fontStyle: 'bold', fillColor: [230, 244, 241] } }, 
-      { content: sisaSaldo.toLocaleString('id-ID'), styles: { fontStyle: 'bold', fillColor: [230, 244, 241] } }
-    ]);
+
+    // Jika difilter "Semua", tampilkan Pengeluaran & Sisa Saldo. Jika per kelas, sembunyikan.
+    if (kelasAktif === 'Semua') {
+        let totalKeluar = kas.keluar;
+        let sisaSaldo = totalPemasukanTabel - totalKeluar;
+        tableRows.push([
+          { content: 'TOTAL PENGELUARAN', colSpan: 5, styles: { halign: 'right', fontStyle: 'bold' } }, 
+          { content: totalKeluar.toLocaleString('id-ID'), styles: { fontStyle: 'bold' } }
+        ]);
+        tableRows.push([
+          { content: 'SISA SALDO (KAS)', colSpan: 5, styles: { halign: 'right', fontStyle: 'bold', fillColor: [230, 244, 241] } }, 
+          { content: sisaSaldo.toLocaleString('id-ID'), styles: { fontStyle: 'bold', fillColor: [230, 244, 241] } }
+        ]);
+    }
 
     doc.autoTable({
       head: [tableColumn], 
@@ -479,7 +515,7 @@ function downloadLaporan() {
     doc.text("Bendahara", 160, finalY + 5, { align: "center" });
     doc.text("( .......................................... )", 160, finalY + 25, { align: "center" });
 
-    doc.save(`Laporan_Kas_${tabAktif}_${today.getTime()}.pdf`);
+    doc.save(`Laporan_${tabAktif}_${kelasAktif}_${today.getTime()}.pdf`);
     Swal.close();
   };
 
