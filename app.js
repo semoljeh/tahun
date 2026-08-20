@@ -369,15 +369,15 @@ function renderLaporan(tabAktif = null, kelasAktif = null, isBack = false) {
   document.getElementById('app-content').innerHTML = `
     <div class="max-w-2xl mx-auto pb-12 pt-4 px-7">
       
-      <!-- DUA DROPDOWN FILTER BERSAMPINGAN -->
+<!-- DUA DROPDOWN FILTER BERSAMPINGAN -->
       <div class="grid grid-cols-2 gap-3 mb-6">
         <div class="relative">
-          <select onchange="renderLaporan(this.value, window.laporanKelasAktif)" class="w-full bg-white border border-gray-100 shadow-sm rounded-2xl px-4 py-3.5 text-xs font-bold text-emerald-700 outline-none focus:border-emerald-500 cursor-pointer appearance-none transition-all">${dropdownTagihanHTML}</select>
-          <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-emerald-500"><i class="fas fa-chevron-down"></i></div>
+          <select onchange="renderLaporan(this.value, window.laporanKelasAktif)" class="w-full bg-white border border-gray-100 shadow-sm rounded-2xl pl-3 pr-8 py-3.5 text-xs font-bold text-emerald-700 outline-none focus:border-emerald-500 cursor-pointer appearance-none transition-all truncate">${dropdownTagihanHTML}</select>
+          <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-emerald-500"><i class="fas fa-chevron-down bg-white pl-1"></i></div>
         </div>
         <div class="relative">
-          <select onchange="renderLaporan(window.laporanTabAktif, this.value)" class="w-full bg-white border border-gray-100 shadow-sm rounded-2xl px-4 py-3.5 text-xs font-bold text-gray-700 outline-none focus:border-emerald-500 cursor-pointer appearance-none transition-all">${dropdownKelasHTML}</select>
-          <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-400"><i class="fas fa-chevron-down"></i></div>
+          <select onchange="renderLaporan(window.laporanTabAktif, this.value)" class="w-full bg-white border border-gray-100 shadow-sm rounded-2xl pl-3 pr-8 py-3.5 text-xs font-bold text-gray-700 outline-none focus:border-emerald-500 cursor-pointer appearance-none transition-all truncate">${dropdownKelasHTML}</select>
+          <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400"><i class="fas fa-chevron-down bg-white pl-1"></i></div>
         </div>
       </div>
 
