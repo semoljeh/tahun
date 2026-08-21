@@ -1,5 +1,5 @@
 // GANTI DENGAN URL WEB APP GAS ANDA YANG BARU SETELAH DEPLOY!
-const API_URL = 'https://script.google.com/macros/s/AKfycbwnrj0VPxQ1qEOin74u21AH8RhJMbmW1BwDHh1P8gZ68iG3okmYVr6Ssyr7qFXEkSSWYA/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbyXGzYbE94YgBQLoNGBSSuvNz5kGQlzMTrrxfYsIVTLAVoGfFXnIVtH2dggNDm_C5jocw/exec';
 let appData = null;
 let dataSettingLokal = [];
 const PIN_SISTEM = "112233"; 
@@ -168,10 +168,14 @@ function renderPembayaran(filterManual = null, isBack = false) {
         </select>
         <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-emerald-500"><i class="fas fa-chevron-down"></i></div>
       </div>
-      <div class="flex items-center gap-2 mb-6">
+     
+	 <div class="flex items-center gap-2 mb-6">
         <div class="relative flex-1"><i class="fas fa-search absolute left-4 top-3.5 text-gray-400 text-sm"></i><input type="text" id="inputPencarian" onkeyup="filterSantri()" placeholder="Cari nama atau NIS..." class="w-full bg-white border border-gray-100 shadow-sm rounded-2xl pl-11 pr-4 py-3.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500/20"></div>
+        <!-- TOMBOL RESET DITAMBAHKAN DI SINI -->
+        <button onclick="resetDataSantri()" class="bg-white border border-gray-100 shadow-sm text-red-500 px-4 py-3.5 rounded-2xl hover:bg-red-50 transition-all" title="Kosongkan Data Santri"><i class="fas fa-trash-alt text-lg"></i></button>
         <button onclick="bukaFormImport()" class="bg-white border border-gray-100 shadow-sm text-blue-600 px-4 py-3.5 rounded-2xl hover:bg-blue-50 transition-all"><i class="fas fa-file-import text-lg"></i></button>
       </div>
+	 
       ${dataSantri.length === 0 ? '<p class="text-center text-sm text-gray-400 py-10">Data tidak ditemukan.</p>' : ''}
       <div class="pb-10" id="listSantri">${listHTML}</div>
     </div>`;
@@ -645,6 +649,39 @@ async function kirimDataImportKeServer(d) {
     await muatUlangDataTanpaReload(); 
     Swal.fire('Sukses', 'Data berhasil diimport', 'success'); 
   } catch (e) { Swal.fire('Info', 'Cek database', 'info'); } 
+}
+
+function resetDataSantri() {
+  Swal.fire({
+    title: 'Reset Data Santri?',
+    text: 'Semua data santri akan dihapus. Aksi ini tidak dapat dibatalkan!',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#d33',
+    cancelButtonColor: '#94a3b8',
+    confirmButtonText: '<i class="fas fa-trash-alt mr-1"></i> Ya, Kosongkan!',
+    cancelButtonText: 'Batal',
+    customClass: { popup: 'rounded-[32px]' }
+  }).then(async (r) => {
+    if (r.isConfirmed) {
+      Swal.fire({ title: 'Menghapus Data...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+      try {
+        const res = await fetch(API_URL, { 
+          method: 'POST', 
+          body: JSON.stringify({ action: 'reset_santri' }) 
+        });
+        const result = await res.json();
+        if (result.success) {
+          await muatUlangDataTanpaReload();
+          Swal.fire('Berhasil!', result.message, 'success');
+        } else {
+          Swal.fire('Gagal', result.message, 'error');
+        }
+      } catch (e) {
+        Swal.fire('Error', 'Terjadi kesalahan saat menghapus data.', 'error');
+      }
+    }
+  });
 }
 
 // ==========================================

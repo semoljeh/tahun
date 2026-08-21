@@ -113,6 +113,19 @@ function doPost(e) {
       sheet.getRange(sheet.getLastRow() + 1, 1, dataBaru.length, dataBaru[0].length).setValues(dataBaru);
       return ContentService.createTextOutput(JSON.stringify({ success: true, message: "Diimport!" })).setMimeType(ContentService.MimeType.JSON);
     }
+	
+	if (request.action === 'reset_santri') {
+      let sheet = ss.getSheetByName("Data Santri");
+      if (sheet) {
+        let lastRow = sheet.getLastRow();
+        let lastCol = sheet.getLastColumn();
+        // Hapus data dari baris ke-2 ke bawah agar Header (baris 1) tetap aman
+        if (lastRow > 1) {
+          sheet.getRange(2, 1, lastRow - 1, lastCol).clearContent();
+        }
+      }
+      return ContentService.createTextOutput(JSON.stringify({ success: true, message: "Semua data santri berhasil dikosongkan!" })).setMimeType(ContentService.MimeType.JSON);
+    }
 
     if (request.action === 'simpan_pembayaran') {
       let settingBiaya = ss.getSheetByName("Pengaturan").getDataRange().getValues().slice(1).map(r => ({ jenis: r[0].toString().trim(), TK: Number(r[1])||0, IBT: Number(r[2])||0, SANA: Number(r[3])||0 }));
